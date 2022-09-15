@@ -1,0 +1,16 @@
+{application, alinkiot_td,
+ [{description, "TDengine Channel"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {alinkiot_td_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {maintainers, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
