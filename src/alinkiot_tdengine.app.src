@@ -1,8 +1,8 @@
-{application, alinkiot_td,
- [{description, "TDengine Channel"},
+{application, alinkiot_tdengine,
+ [{description, "TDengine for Erlang"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, {alinkiot_td_app, []}},
+  {mod, {alinkiot_tdengine_app, []}},
   {applications,
    [kernel,
     stdlib

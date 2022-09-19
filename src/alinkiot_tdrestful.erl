@@ -1,24 +1,13 @@
-%%%-------------------------------------------------------------------
-%%% @author kenneth
-%%% @copyright (C) 2020, <COMPANY>
-%%% @doc
-%%%
-%%% @end
-%%% Created : 24. 四月 2020 16:53
-%%%-------------------------------------------------------------------
 -module(alinkiot_tdrestful).
 -author("kenneth").
 -include("alinkiot_tdengine.hrl").
 -define(HTTPOption, [{timeout, 60000}, {connect_timeout, 60000}]).
 -define(REQUESTOption, [{body_format, binary}]).
-%% API
 -export([start/0, show_database/3]).
 -export([request/4, do_request/3]).
--export([test/0]).
 
 
 start() ->
-    ets:insert(sw_framework_data, {{tdengine, index}, 0}),
     lists:foreach(
         fun(X) ->
             Profile = list_to_atom(lists:concat([http, X])),
@@ -129,16 +118,3 @@ format_head([H0 | Headers], [V | Values], Acc, Formatter) ->
         _ ->
             format_head(Headers, Values, Acc#{H0 => V}, Formatter)
     end.
-
-
-test() ->
-    lists:foreach(
-        fun(Sql) ->
-            R = request(<<"http://132.232.121.164:6020/rest/sql">>, <<"root">>, <<"taosdata">>, Sql),
-            io:format("~p~n", [R])
-        end, [
-            <<"select * from alinkiot.device;">>,
-            <<"use alinkiot2;">>,
-            <<"show databases;">>,
-            <<"delete from alinkiot.device where devaddr = '1111'">>
-        ]).
