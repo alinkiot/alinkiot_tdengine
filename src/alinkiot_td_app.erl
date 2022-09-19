@@ -3,9 +3,7 @@
 %%%-------------------------------------------------------------------
 
 -module(alinkiot_td_app).
--include("alinkiot_tdengine.hrl").
 
--emqx_plugin(?MODULE).
 -behaviour(application).
 
 %% Application callbacks
