@@ -50,7 +50,7 @@ do_request(Url, Authorization, Sql) ->
                 {Sql, #{}}
         end,
     Request = {Url, Header, "text/sql", Sql1},
-    Index = ets:update_counter(sw_framework_data, {tdengine, index}, {2, 1, ?MAX_PROFILE, 1}),
+    Index = random:uniform(?MAX_PROFILE),
     Profile = list_to_atom(lists:concat([http, Index])),
     timer:sleep(1),
     case catch httpc:request(post, Request, ?HTTPOption, ?REQUESTOption, Profile) of
