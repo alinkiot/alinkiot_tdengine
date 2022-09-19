@@ -118,7 +118,7 @@ query(Pool, Url, Username, Password, SQL, QueryOpts) ->
             end;
         {ok, StatusCode, _Headers, ResponseBody} ->
             {error,
-                {StatusCode, jsx:decode(ResponseBody, [return_maps])}};
+                {StatusCode, jiffy:decode(ResponseBody, [return_maps])}};
         {error, Reason} -> {error, Reason}
     end.
 
