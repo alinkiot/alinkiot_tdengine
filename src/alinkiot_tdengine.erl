@@ -345,10 +345,10 @@ run_sql(#{ <<"url">> := Url, <<"username">> := UserName, <<"password">> := Passw
 
 get_env() ->
     #{
-        <<"url">> => application:get_env(alinkiot_tdengine, url, <<>>),
-        <<"database">> => application:get_env(alinkiot_tdengine, database, <<>>),
-        <<"username">> => application:get_env(alinkiot_tdengine, username, <<>>),
-        <<"password">> => application:get_env(alinkiot_tdengine, password, <<>>)
+        <<"url">> => list_to_binary(application:get_env(alinkiot_tdengine, url, "")),
+        <<"database">> => list_to_binary(application:get_env(alinkiot_tdengine, database, "")),
+        <<"username">> => list_to_binary(application:get_env(alinkiot_tdengine, username, "")),
+        <<"password">> => list_to_binary(application:get_env(alinkiot_tdengine, password, ""))
     }.
 
 
