@@ -14,6 +14,10 @@
 -export([create_database/2, create_schemas/1, create_object/2, create_user/2, alter_user/2, delete_user/1, query_object/2, batch/1]).
 
 
+
+create_database(DataBase, Keep) ->
+    create_database(?DEFAULT, DataBase, Keep).
+
 create_database(Channel, DataBase, Keep) ->
     transaction(Channel,
         fun(Context) ->
@@ -23,7 +27,9 @@ create_database(Channel, DataBase, Keep) ->
         end).
 
 
-%% 如果里面有using，则为使用了超级表创建子表
+create_schemas(Channel, Schema) ->
+    create_schemas(?DEFAULT, Channel, Schema).
+
 create_schemas(Channel, #{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
     transaction(Channel,
         fun(#{<<"database">> := DB} = Context) ->
@@ -33,7 +39,6 @@ create_schemas(Channel, #{<<"tableName">> := TableName, <<"using">> := STbName, 
             run_sql(Context, execute_update, Sql)
         end);
 
-%% 如果schema里面带有tags则为超级表，没有则为普通表
 create_schemas(Channel, #{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema) ->
     transaction(Channel,
         fun(#{<<"database">> := DB} = Context) ->
@@ -320,4 +325,32 @@ to_binary(V) when is_integer(V) -> integer_to_binary(V);
 to_binary(V) when is_atom(V) -> atom_to_binary(V, utf8);
 to_binary(V) when is_float(V) -> list_to_binary(io_lib:format("~p", [V]));
 to_binary(V) when is_binary(V) -> V.
+
+
+transaction(Channel, Fun) ->
+    Context = get_env(),
+    Fun(Context).
+
+
+run_sql(#{ <<"url">> := Url, <<"username">> := UserName, <<"password">> := Password}, _Action, Sql) ->
+    case alinkiot_tdrestful:request(Url, UserName, Password, Sql) of
+        {ok, Result} ->
+            %logger:debug("Execute ~p (~p) ~p", [Url, Sql, Result]),
+            {ok, Result};
+        {error, Reason} ->
+            logger:error("Execute Fail ~p (~p) ~p", [Url, Sql, Reason]),
+            {error, Reason}
+    end.
+
+
+get_env() ->
+    #{
+        <<"url">> => application:get_env(alinkiot_tdengine, url, <<>>),
+        <<"database">> => application:get_env(alinkiot_tdengine, database, <<>>),
+        <<"username">> => application:get_env(alinkiot_tdengine, username, <<>>),
+        <<"password">> => application:get_env(alinkiot_tdengine, password, <<>>)
+    }.
+
+
+
 

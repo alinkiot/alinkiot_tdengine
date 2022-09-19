@@ -1,3 +1,4 @@
+-define(DEFAULT, default).
 -define(MAX_PROFILE, 100).
 -define(PRE, <<"alinkiot_">>).
 -define(Table(Name), <<?PRE/binary, Name/binary>>).
