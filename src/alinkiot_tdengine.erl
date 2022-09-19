@@ -11,7 +11,7 @@
 -include("alinkiot_tdengine.hrl").
 %% API
 -export([create_database/3, create_schemas/2, create_object/3, create_user/3, alter_user/3, delete_user/2, query_object/3, batch/2]).
--export([create_database/2, create_schemas/1, create_object/2, create_user/2, alter_user/2, delete_user/1, query_object/2, batch/1]).
+-export([create_database/2,  create_schemas/1, create_object/2, create_user/2, alter_user/2, delete_user/1, query_object/2, batch/1]).
 
 
 
@@ -27,8 +27,8 @@ create_database(Channel, DataBase, Keep) ->
         end).
 
 
-create_schemas(Channel, Schema) ->
-    create_schemas(?DEFAULT, Channel, Schema).
+create_schemas(Schema) ->
+    create_schemas(?DEFAULT, Schema).
 
 create_schemas(Channel, #{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
     transaction(Channel,
