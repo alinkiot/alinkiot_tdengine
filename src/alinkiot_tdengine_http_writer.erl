@@ -29,7 +29,8 @@
     flush_interval,
     flush_data_size,
     flush_time_ref,
-    cache_datas
+    cache_datas,
+    data_parse_mod
 }).
 
 
@@ -48,12 +49,14 @@ init([Opts]) ->
     Port = to_binary(proplists:get_value(port, Opts, 6041)),
     UserName = to_binary(proplists:get_value(username, Opts, "root")),
     Password = to_binary(proplists:get_value(password, Opts, "taosdata")),
-    PoolName = proplists:get_value(http_pool, Opts, default),
+    PoolName = proplists:get_value(pool, Opts, default),
     FlushInterval = proplists:get_value(flush_interval, Opts, 1000),
     FlushDataSize = proplists:get_value(flush_data_size, Opts, 100),
     DataBase = proplists:get_value(database, Opts, <<>>),
     Url = <<"http://", Host/binary, ":", Port/binary, "rest/sql/", DataBase/binary>>,
-    Authorization = base64:encode(<<UserName/binary, ":", Password/binary>>),
+    Token = base64:encode(<<UserName/binary, ":", Password/binary>>),
+    Authorization = <<"Basic ", Token/binary>>,
+    DataParseMod = proplists:get_value(data_parse_mod, Opts, undefined),
     hackney_pool:start_pool(PoolName, [{max_connections, 4}]),
     State = #state{
         url = Url,
@@ -62,7 +65,8 @@ init([Opts]) ->
         flush_interval = FlushInterval,
         flush_data_size = FlushDataSize,
         flush_time_ref = timer:start_timer(FlushInterval, self(), flush),
-        cache_datas = []
+        cache_datas = [],
+        data_parse_mod = DataParseMod
     },
     {ok, State}.
 
