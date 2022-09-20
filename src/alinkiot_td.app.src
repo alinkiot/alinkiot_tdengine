@@ -5,7 +5,8 @@
   {mod, {alinkiot_td_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    hackney
    ]},
   {env,[]},
   {modules, []},

@@ -336,6 +336,7 @@ save_to_tdengine(Channel, Requests) ->
 
 
 check_cache(Channel) ->
+    ssl:connect()
     Info = alinkiot_dcache:info(?CACHE(Channel)),
     {size, Size} = lists:keyfind(size, 1, Info),
     case Size =< 100 of
