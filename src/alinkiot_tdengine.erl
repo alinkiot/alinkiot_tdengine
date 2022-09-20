@@ -23,7 +23,7 @@
 create_database() ->
     ok.
 
-write(Url, ) ->
+write(Url, Sql) ->
     ok.
 
 

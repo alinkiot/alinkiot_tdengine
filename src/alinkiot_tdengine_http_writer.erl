@@ -9,10 +9,12 @@
 -behaviour(gen_server).
 
 -export([
-    insert/2
+    start_pool/2,
+    stop_pool/1,
+    insert/2,
+    connect/1
 ]).
 -export([
-    start_link/1,
     init/1,
     handle_call/3,
     handle_cast/2,
@@ -33,16 +35,23 @@
     data_parse_mod
 }).
 
+start_pool(PoolName, Opts) ->
+    ecpool_sup:start_pool(PoolName, ?MODULE, Opts).
+
+%% stop pool
+stop_pool(PoolName) ->
+    ecpool_sup:stop_pool(PoolName).
 
 insert(Pid, Data) ->
     gen_server:cast(Pid, Data).
 
+connect(Opts) ->
+    gen_server:start_link(?MODULE, [Opts], []).
+
+
 %%%===================================================================
 %%% Spawning and gen_server implementation
 %%%===================================================================
-
-start_link(Opts) ->
-    gen_server:start_link(?MODULE, [Opts], []).
 
 init([Opts]) ->
     Host = to_binary(proplists:get_value(host, Opts, "127.0.0.1")),
@@ -64,7 +73,7 @@ init([Opts]) ->
         pool = PoolName,
         flush_interval = FlushInterval,
         flush_data_size = FlushDataSize,
-        flush_time_ref = start_timer(FlushInterval, self(), flush),
+        flush_time_ref = start_timer(FlushInterval),
         cache_datas = [],
         data_parse_mod = DataParseMod
     },
@@ -111,8 +120,14 @@ write(Datas, State) ->
            data_parse_mod = Mod} = State,
     case catch Mod:parse(Datas) of
         Sql when is_list(Sql) orelse is_binary(Sql) ->
-            case alinkiot_tdengine:write(PoolName, Url, Authorization, Sql) of
-                ok ->
+            QueryOpts =
+                #{
+                    pool => PoolName,
+                    authorization => Authorization,
+                    retry => 3
+                },
+            case alinkiot_tdengine_rest:query(Url, Sql, QueryOpts) of
+                {ok, _} ->
                     ok;
                 {error, Reason} ->
                     logger:error("Data ~p State ~p send data to tdengine failed:~p", [Datas, State, Reason])

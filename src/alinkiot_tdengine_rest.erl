@@ -9,112 +9,56 @@
 -module(alinkiot_tdengine_rest).
 -author("yqfclid").
 
--behaviour(gen_server).
 
--export([start_link/0, start_link/1, stop/1]).
+-export([
+    query/2,
+    query/3,
+    try_http_query/6,
+    do_http_query/4
+]).
 
--export([insert/3]).
+query(Url, Sql) ->
+    query(Url, Sql, #{username => <<"root">>, password => <<"taosdata">>}).
 
--export([init/1,
-    handle_call/3,
-    handle_cast/2,
-    handle_info/2,
-    terminate/2,
-    code_change/3]).
 
--record(state, {url, username, password, pool}).
 
--spec start_link() -> {ok, pid()}.
-
-start_link() -> start_link([]).
-
-start_link(Opts) ->
-    gen_server:start_link(tdengine, [Opts], []).
-
-stop(Pid) -> gen_server:stop(Pid).
-
-insert(Pid, SQL, QueryOpts) ->
-    gen_server:call(Pid, {insert, SQL, QueryOpts}).
-
-init([Opts]) ->
-    PoolName = {proplists:get_value(pool, Opts, default),
-        self()},
-    hackney_pool:start_pool(PoolName,
-        [{max_connections, 4}]),
-    State = #state{url = make_url(Opts),
-        username = proplists:get_value(username, Opts, ""),
-        password = proplists:get_value(password, Opts, ""),
-        pool = PoolName},
-    {ok, State}.
-
-handle_call({insert, SQL, QueryOpts}, _From,
-    State = #state{url = Url, username = Username,
-        password = Password, pool = Pool}) ->
-    Reply = query(Pool,
-        Url,
-        Username,
-        Password,
-        SQL,
-        QueryOpts,
-        undefined,
-        3),
-    {reply, Reply, State};
-handle_call(_Request, _From, State) ->
-    {reply, ignored, State}.
-
-handle_cast(_Msg, State) -> {noreply, State}.
-
-handle_info(_Info, State) -> {noreply, State}.
-
-terminate(_Reason, _State) -> ok.
-
-code_change(_OldVsn, State, _Extra) -> {ok, State}.
-
-query(_Pool, _Url, _Username, _Password, _SQL,
-    _QueryOpts, Error, 0) ->
-    Error;
-query(Pool, Url, Username, Password, SQL, QueryOpts,
-    _LastError, Retry) ->
-    case query(Pool,
-        Url,
-        Username,
-        Password,
-        SQL,
-        QueryOpts)
-    of
-        {error, _Reason} = Error ->
-            query(Pool,
-                Url,
-                Username,
-                Password,
-                SQL,
-                QueryOpts,
-                Error,
-                Retry - 1);
-        Reply -> Reply
-    end.
-
-query(Pool, Url, Username, Password, SQL, QueryOpts) ->
-    Url1 = maybe_append_dbname(Url,
-        proplists:get_value(db_name, QueryOpts, <<"">>)),
-    Token = base64:encode(<<Username/binary, ":",
-        Password/binary>>),
-    Headers = [{<<"Authorization">>,
-        <<"Basic ", Token/binary>>}],
-    Options = [{pool, Pool},
+query(Url, Sql, #{authorization := Authorization} = QueryOpts) ->
+    HttpOpts = [
+        {pool, maps:get(pool, QueryOpts, default)},
         {connect_timeout, 10000},
         {recv_timeout, 30000},
         {follow_redirectm, true},
         {max_redirect, 5},
-        with_body],
-    case hackney:request(post, Url1, Headers, SQL, Options)
-    of
+        with_body
+    ],
+    try_http_query(Url, Sql, Authorization, HttpOpts, undefined, maps:get(retry, QueryOpts, 1));
+query(Url, Sql, #{username := Username, password := Password} = QueryOpts) ->
+    Token = base64:encode(<<Username/binary, ":", Password/binary>>),
+    query(Url, Sql, QueryOpts#{authorization => <<"Basic ", Token/binary>>}).
+
+
+try_http_query(_Url, _Sql, _Authorization, _HttpOpts, Err, 0) ->
+    Err;
+try_http_query(Url, Sql, Authorization, HttpOpts, _Err, Retry) ->
+    case do_http_query(Url, Authorization, Sql, HttpOpts) of
+        {ok, Return} ->
+            {ok, Return};
+        {error, Reason} ->
+            try_http_query(Url, Sql, Authorization, HttpOpts, {error, Reason}, Retry - 1)
+    end
+
+
+
+
+
+do_http_query(Url, Authorization, Sql, HttpOpts) ->
+    Headers = [{<<"Authorization">>, Authorization}],
+    case hackney:request(post, Url, Headers, Sql, HttpOpts) of
         {ok, StatusCode, _Headers, ResponseBody}
             when StatusCode =:= 200 orelse StatusCode =:= 204 ->
-            ResponseMap = jsx:decode(ResponseBody, [return_maps]),
-            case ResponseMap of
-                #{<<"status">> := <<"succ">>} -> {ok, ResponseMap};
-                _ -> {error, ResponseMap}
+            case jiffy:decode(ResponseBody, [return_maps]) of
+                #{<<"status">> := <<"succ">>} = ResponseMap -> {ok, ResponseMap};
+                ResponseMap -> {error, ResponseMap}
             end;
         {ok, StatusCode, _Headers, ResponseBody} ->
             {error,
@@ -122,30 +66,5 @@ query(Pool, Url, Username, Password, SQL, QueryOpts) ->
         {error, Reason} -> {error, Reason}
     end.
 
-make_url(Opts) ->
-    Host = case proplists:get_value(host,
-        Opts,
-        <<"127.0.0.1">>)
-           of
-               <<"http://", Host0/binary>> -> binary_to_list(Host0);
-               <<"https://", Host0/binary>> -> binary_to_list(Host0);
-               Host0 -> binary_to_list(Host0)
-           end,
-    Port = integer_to_list(proplists:get_value(port,
-        Opts,
-        6041)),
-    Scheme = case proplists:get_value(https_enabled,
-        Opts,
-        false)
-             of
-                 true -> "https://";
-                 false -> "http://"
-             end,
-    Scheme ++ Host ++ ":" ++ Port ++ "/rest/sql".
 
-maybe_append_dbname(URL, <<"">>) -> str(URL);
-maybe_append_dbname(URL, DBName) ->
-    str(URL) ++ "/" ++ str(DBName).
 
-str(S) when is_binary(S) -> binary_to_list(S);
-str(S) when is_list(S) -> S.
