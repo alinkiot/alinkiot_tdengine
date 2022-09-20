@@ -50,8 +50,8 @@ init([Opts]) ->
     UserName = to_binary(proplists:get_value(username, Opts, "root")),
     Password = to_binary(proplists:get_value(password, Opts, "taosdata")),
     PoolName = proplists:get_value(pool, Opts, default),
-    FlushInterval = proplists:get_value(flush_interval, Opts, 1000),
-    FlushDataSize = proplists:get_value(flush_data_size, Opts, 100),
+    FlushInterval = proplists:get_value(flush_interval, Opts, 0),
+    FlushDataSize = proplists:get_value(flush_data_size, Opts, 0),
     DataBase = proplists:get_value(database, Opts, <<>>),
     Url = <<"http://", Host/binary, ":", Port/binary, "rest/sql/", DataBase/binary>>,
     Token = base64:encode(<<UserName/binary, ":", Password/binary>>),
@@ -64,7 +64,7 @@ init([Opts]) ->
         pool = PoolName,
         flush_interval = FlushInterval,
         flush_data_size = FlushDataSize,
-        flush_time_ref = timer:start_timer(FlushInterval, self(), flush),
+        flush_time_ref = start_timer(FlushInterval, self(), flush),
         cache_datas = [],
         data_parse_mod = DataParseMod
     },
@@ -83,9 +83,11 @@ handle_cast(_Request, State = #state{}) ->
     {noreply, State}.
 
 
-handle_info({timeout, TimerRef, flush}, #state{cache_datas = CacheDatas, flush_time_ref = TimerRef} = State) when CacheDatas =/= []->
+handle_info({timeout, TimerRef, flush}, #state{cache_datas = CacheDatas,
+                                               flush_time_ref = TimerRef,
+                                                flush_interval = FlushInterval} = State) when CacheDatas =/= []->
     write(CacheDatas, State),
-    {noreply, State#state{cache_datas = []}};
+    {noreply, State#state{cache_datas = [], flush_time_ref = start_timer(FlushInterval)}};
 handle_info(_Info, State = #state{}) ->
     {noreply, State}.
 
@@ -98,15 +100,25 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+start_timer(0) -> erlang:make_ref();
+start_timer(FlushInterval) -> timer:start_timer(FlushInterval, self(), flush).
+
+
 write(Datas, State) ->
     #state{url = Url,
            authorization = Authorization,
-           pool = PoolName} = State,
-    case alinkiot_tdengine:write(PoolName, Url, Authorization, Datas) of
-        ok ->
-            ok;
-        {error, Reason} ->
-            logger:error("Data ~p State ~p send data to tdengine failed:~p", [Datas, State, Reason])
+           pool = PoolName,
+           data_parse_mod = Mod} = State,
+    case catch Mod:parse(Datas) of
+        Sql when is_list(Sql) orelse is_binary(Sql) ->
+            case alinkiot_tdengine:write(PoolName, Url, Authorization, Sql) of
+                ok ->
+                    ok;
+                {error, Reason} ->
+                    logger:error("Data ~p State ~p send data to tdengine failed:~p", [Datas, State, Reason])
+            end;
+        Err ->
+            logger:error("mod ~p parse datas ~p failed: ~p", [Mod, Datas, Err])
     end.
 
 
