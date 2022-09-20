@@ -9,8 +9,6 @@
 -behaviour(gen_server).
 
 -export([
-    start_pool/2,
-    stop_pool/1,
     insert/2,
     connect/1
 ]).
@@ -34,13 +32,6 @@
     cache_datas,
     data_parse_mod
 }).
-
-start_pool(PoolName, Opts) ->
-    ecpool_sup:start_pool(PoolName, ?MODULE, Opts).
-
-%% stop pool
-stop_pool(PoolName) ->
-    ecpool_sup:stop_pool(PoolName).
 
 insert(Pid, Data) ->
     gen_server:cast(Pid, Data).
