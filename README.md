@@ -4,6 +4,9 @@ TDengine for erlang
 
 ## example
 ```erlang
+%% 创建数据库
+alinkiot_tdengine:create_database(<<"alinkiot">>, 3650).
+
 %% 创建超级表
 alinkiot_tdengine:create_schemas(#{
     <<"tableName">> => <<"Product">>,
@@ -17,7 +20,7 @@ alinkiot_tdengine:create_schemas(#{
         {<<"description">>, #{
             <<"type">> => <<"NCHAR(10)">>
         }},
-        {<<"enable">>, #{
+        {<<"flag">>, #{
             <<"type">> => <<"BOOL">>
         }}
     ],
@@ -39,13 +42,13 @@ alinkiot_tdengine:create_schemas(#{
 alinkiot_tdengine:create_schemas(#{
     <<"tableName">> => <<"SW00000001">>,
     <<"using">> => <<"Product">>,
-    <<"tags">> => [<<"Product">>, <<"00000001">>]
+    <<"tags">> => [<<"p0001">>, <<"00000001">>]
 }).
 
 %% 插入设备
 alinkiot_tdengine:create_object(<<"SW00000001">>, #{
     <<"using">> => <<"Product">>,
-    <<"tags">> => [<<"Product">>, <<"00000001">>],
+    <<"tags">> => [<<"p0001">>, <<"00000001">>],
     <<"values">> => [
         [now, 222, 2.1, <<"aaaaa">>, false],
         [now, 222, 2.2, <<"aaaaa">>, false],
@@ -72,7 +75,7 @@ alinkiot_tdengine:query_object(<<"Product">>, #{
     <<"skip">> => 0,
     <<"order">> => <<"-createdAt">>,
     <<"where">> => #{
-        <<"enable">> => false
+        <<"flag">> => false
     }
 }).
 
