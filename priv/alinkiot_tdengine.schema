@@ -1,0 +1,20 @@
+{mapping, "td.url", "alinkiot_tdengine.url", [
+  {datatype, string},
+  {default, "http://127.0.0.1:6020/rest/sql"}
+]}.
+
+{mapping, "td.database", "alinkiot_tdengine.database", [
+  {datatype, string},
+  {default, "alinkiot"}
+]}.
+
+{mapping, "td.username", "alinkiot_tdengine.username", [
+  {datatype, string},
+  {default, "root"}
+]}.
+
+
+{mapping, "td.password", "alinkiot_tdengine.password", [
+  {datatype, string},
+  {default, "123456"}
+]}.

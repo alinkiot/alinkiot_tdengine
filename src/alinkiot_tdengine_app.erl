@@ -18,6 +18,7 @@
 start(_StartType, _StartArgs) ->
     {ok, Sup} = alinkiot_tdengine_sup:start_link(),
     alinkiot_tdengine_writer:start(),
+    alinkiot_tdrestful:start(),
     load(),
     {ok, Sup}.
 
