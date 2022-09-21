@@ -2,7 +2,7 @@
 %% @end
 %%%-------------------------------------------------------------------
 
--module(alinkiot_td_app).
+-module(alinkiot_tdengine_app).
 -include("alinkiot_tdengine.hrl").
 
 -emqx_plugin(?MODULE).

@@ -2,7 +2,7 @@
  [{description, "TDengine Channel"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, {alinkiot_td_app, []}},
+  {mod, {alinkiot_tdengine_app, []}},
   {applications,
    [kernel,
     stdlib,

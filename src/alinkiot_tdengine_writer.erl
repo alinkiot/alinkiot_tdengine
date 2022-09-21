@@ -29,7 +29,6 @@ start() ->
 
 
 start_writer(WriterName, Opts) ->
-    case ets:lookup()
     ecpool_sup:start_pool(WriterName, alinkiot_tdengine_http_writer, Opts).
 
 %% stop pool
@@ -47,8 +46,7 @@ lookup_writer(Topic) ->
     end.
 
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
 insert(WriterName, Data) ->
     F = fun(Pid) -> alinkiot_tdengine_http_writer:insert(Pid, Data) end,
     ecpool:with_client(WriterName, F).

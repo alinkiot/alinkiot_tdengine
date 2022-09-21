@@ -42,8 +42,13 @@ on_message_publish(Msg, _Env) ->
 %%%===================================================================
 %%% Application callbacks
 %%%===================================================================
-check_and_store(#message{topic = Topic}) ->
-    case proplists:get_value() of
-
-    end,
-    ok.
+check_and_store(Msg) ->
+    case check(Msg) of
+        {ok, Writer} ->
+            alinkiot_tdengine_writer:insert(Writer, Msg),
+            ok;
+        {error, not_found} ->
+            ok;
+        {error, Reason} ->
+            logger:error("message ~p found writer failed:~p", [Msg, Reason])
+    end
