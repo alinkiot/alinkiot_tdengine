@@ -12,7 +12,7 @@
 %% API
 -export([
     start/0,
-    start/2,
+    start/1,
     start_writer/2,
     stop_writer/1,
     lookup_writer/1,
@@ -25,15 +25,15 @@
 %%% API
 %%%===================================================================
 start() ->
-    WriteOptions = application:get_env(alinkiot_tdengine, writer_options, []),
-    Mods = [],
-    lists:foreach(fun(Mod) -> start(Mod, WriteOptions) end, Mods).
+    Mods = handler_mods(),
+    lists:foreach(fun(Mod) -> start(Mod) end, Mods).
 
-start(Mod, WriterOpts) ->
+start(Mod) ->
+    WriteOptions = application:get_env(alinkiot_tdengine, writer_options, []),
     {ok, ProductId} = proplists:get_value(alinkiot_td_writer, Mod:module_info(attributes)),
-    Mod:start(WriterOpts),
+    Mod:start(WriteOptions),
     WriterName = writer_name(ProductId),
-    NWriterOpts = [{http_pool, WriterName}|WriterOpts],
+    NWriterOpts = [{http_pool, WriterName}, {handler_mod, Mod}|WriteOptions],
     {ok, _} = start_writer(WriterName, NWriterOpts),
     ok.
 
@@ -71,3 +71,10 @@ write(WriterName, Msg) ->
 %%%===================================================================
 writer_name(WriterName) ->
     {alinkiot_tdengine, WriterName}.
+
+
+
+handler_mods() ->
+    [
+        alinkiot_td_writer_test
+    ].
