@@ -11,11 +11,21 @@
 
 
 -export([
+    simple_query/5,
     query/2,
     query/3,
     try_http_query/6,
     do_http_query/4
 ]).
+
+simple_query(Host, Port, UserName, Passsword, Sql) ->
+    HostB = to_binary(Host),
+    PortB = to_binary(Port),
+    UserNameB = to_binary(UserName),
+    PassswordB = to_binary(Passsword),
+    Url = <<"http://", HostB/binary, ":", PortB/binary, "rest/sql">>,
+    query(Url, to_binary(Sql), #{username => UserNameB, password => PassswordB}).
+
 
 query(Url, Sql) ->
     query(Url, Sql, #{username => <<"root">>, password => <<"taosdata">>}).
@@ -45,7 +55,7 @@ try_http_query(Url, Sql, Authorization, HttpOpts, _Err, Retry) ->
             {ok, Return};
         {error, Reason} ->
             try_http_query(Url, Sql, Authorization, HttpOpts, {error, Reason}, Retry - 1)
-    end
+    end.
 
 
 
@@ -68,3 +78,16 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
 
 
 
+
+to_binary(S) when is_atom(S) ->
+    atom_to_binary(S);
+to_binary(S) when is_list(S) ->
+    list_to_binary(S);
+to_binary(S) when is_integer(S) ->
+    integer_to_binary(S);
+to_binary(S) when is_float(S) ->
+    float_to_binary(S);
+to_binary(S) when is_binary(S) ->
+    S;
+to_binary(S) ->
+    throw({badarg, S}).

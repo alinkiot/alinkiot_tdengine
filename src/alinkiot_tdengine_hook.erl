@@ -14,24 +14,36 @@
     load/0,
     unload/0,
     reload/0,
-    on_message_publish/0
+    on_message_publish/2
 ]).
 
+
+-include_lib("emqx/include/emqx.hrl").
+-include("alinkiot_tdengine.hrl").
 %%%===================================================================
 %%% API
 %%%===================================================================
 load() ->
+    _ = emqx:hook('message.publish', fun ?MODULE:on_message_publish/2, [[]]),
     ok.
 
 unload() ->
+    emqx:unhook('message.publish', fun ?MODULE:on_message_publish/2),
     ok.
 
 reload() ->
-    ok.
+    unload(),
+    reload().
 
 
-on_message_publish() ->
-    ok.
+on_message_publish(Msg, _Env) ->
+    check_and_store(Msg),
+    {ok, Msg}.
 %%%===================================================================
 %%% Application callbacks
 %%%===================================================================
+check_and_store(#message{topic = Topic}) ->
+    case proplists:get_value() of
+
+    end,
+    ok.

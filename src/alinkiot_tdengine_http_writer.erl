@@ -27,14 +27,14 @@
     authorization,
     pool,
     flush_interval,
-    flush_data_size,
+    flush_msg_len,
     flush_time_ref,
-    cache_datas,
-    data_parse_mod
+    cache_msgs,
+    handler_mod
 }).
 
-insert(Pid, Data) ->
-    gen_server:cast(Pid, Data).
+insert(Pid, Message) ->
+    gen_server:cast(Pid, Message).
 
 connect(Opts) ->
     gen_server:start_link(?MODULE, [Opts], []).
@@ -49,45 +49,45 @@ init([Opts]) ->
     Port = to_binary(proplists:get_value(port, Opts, 6041)),
     UserName = to_binary(proplists:get_value(username, Opts, "root")),
     Password = to_binary(proplists:get_value(password, Opts, "taosdata")),
-    PoolName = proplists:get_value(pool, Opts, default),
+    PoolName = proplists:get_value(http_pool, Opts, default),
     FlushInterval = proplists:get_value(flush_interval, Opts, 0),
-    FlushDataSize = proplists:get_value(flush_data_size, Opts, 0),
+    FlushMsgLen = proplists:get_value(flush_msg_len, Opts, 0),
     DataBase = proplists:get_value(database, Opts, <<>>),
     Url = <<"http://", Host/binary, ":", Port/binary, "rest/sql/", DataBase/binary>>,
     Token = base64:encode(<<UserName/binary, ":", Password/binary>>),
     Authorization = <<"Basic ", Token/binary>>,
-    DataParseMod = proplists:get_value(data_parse_mod, Opts, undefined),
+    HandlerMod = proplists:get_value(handler_mod, Opts, undefined),
     hackney_pool:start_pool(PoolName, [{max_connections, 4}]),
     State = #state{
         url = Url,
         authorization = Authorization,
         pool = PoolName,
         flush_interval = FlushInterval,
-        flush_data_size = FlushDataSize,
+        flush_msg_len = FlushMsgLen,
         flush_time_ref = start_timer(FlushInterval),
-        cache_datas = [],
-        data_parse_mod = DataParseMod
+        cache_msgs = [],
+        handler_mod = HandlerMod
     },
     {ok, State}.
 
 handle_call(_Request, _From, State = #state{}) ->
     {reply, ok, State}.
 
-handle_cast({insert, Data}, #state{cache_datas = CacheDatas,
-                                   flush_data_size = FlushDataSize} = State) when length(CacheDatas) >= FlushDataSize - 1 ->
-    write([Data|CacheDatas], State),
-    {noreply, State#state{cache_datas = []}};
-handle_cast({insert, Data}, #state{cache_datas = CacheDatas} = State) ->
-    {noreply, State#state{cache_datas = [Data|CacheDatas]}};
+handle_cast({insert, Msg}, #state{cache_msgs = CacheMsgs,
+                                  flush_msg_len = FlushMsgLen} = State) when length(CacheMsgs) >= FlushMsgLen - 1 ->
+    write([Msg|CacheMsgs], State),
+    {noreply, State#state{cache_msgs = []}};
+handle_cast({insert, Data}, #state{cache_msgs = CacheMsgs} = State) ->
+    {noreply, State#state{cache_msgs = [Data|CacheMsgs]}};
 handle_cast(_Request, State = #state{}) ->
     {noreply, State}.
 
 
-handle_info({timeout, TimerRef, flush}, #state{cache_datas = CacheDatas,
+handle_info({timeout, TimerRef, flush}, #state{cache_msgs = CacheMsgs,
                                                flush_time_ref = TimerRef,
-                                                flush_interval = FlushInterval} = State) when CacheDatas =/= []->
-    write(CacheDatas, State),
-    {noreply, State#state{cache_datas = [], flush_time_ref = start_timer(FlushInterval)}};
+                                               flush_interval = FlushInterval} = State) when CacheMsgs =/= []->
+    write(CacheMsgs, State),
+    {noreply, State#state{cache_msgs = [], flush_time_ref = start_timer(FlushInterval)}};
 handle_info(_Info, State = #state{}) ->
     {noreply, State}.
 
@@ -104,12 +104,12 @@ start_timer(0) -> erlang:make_ref();
 start_timer(FlushInterval) -> timer:start_timer(FlushInterval, self(), flush).
 
 
-write(Datas, State) ->
+write(Msgs, State) ->
     #state{url = Url,
            authorization = Authorization,
            pool = PoolName,
-           data_parse_mod = Mod} = State,
-    case catch Mod:parse(Datas) of
+           handler_mod = Mod} = State,
+    case catch Mod:parse_messages_to_sql(Msgs) of
         Sql when is_list(Sql) orelse is_binary(Sql) ->
             QueryOpts =
                 #{
@@ -121,10 +121,10 @@ write(Datas, State) ->
                 {ok, _} ->
                     ok;
                 {error, Reason} ->
-                    logger:error("Data ~p State ~p send data to tdengine failed:~p", [Datas, State, Reason])
+                    logger:error("Data ~p State ~p send data to tdengine failed:~p", [Msgs, State, Reason])
             end;
         Err ->
-            logger:error("mod ~p parse datas ~p failed: ~p", [Mod, Datas, Err])
+            logger:error("mod ~p parse datas ~p failed: ~p", [Mod, Msgs, Err])
     end.
 
 

@@ -16,8 +16,10 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
+    {ok, Sup} = alinkiot_tdengine_sup:start_link(),
+    alinkiot_tdengine_writer:start(),
     load(),
-    alinkiot_tdengine_sup:start_link().
+    {ok, Sup}.
 
 %%--------------------------------------------------------------------
 stop(_State) ->

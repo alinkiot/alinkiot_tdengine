@@ -11,21 +11,44 @@
 
 %% API
 -export([
+    start/0,
     start_writer/2,
     stop_writer/1,
+    lookup_writer/1,
     insert/2
 ]).
 
+-include("alinkiot_tdengine.hrl")
 %%%===================================================================
 %%% API
 %%%===================================================================
+start() ->
+
+    ok.
+
+
+
 start_writer(WriterName, Opts) ->
+    case ets:lookup()
     ecpool_sup:start_pool(WriterName, alinkiot_tdengine_http_writer, Opts).
 
 %% stop pool
 stop_writer(WriterName) ->
     ecpool_sup:stop_pool(WriterName).
 
+lookup_writer(Topic) ->
+    case ets:lookup(?WRITER_TAB, Topic) of
+        {ok, [{Topic, Writer}]} ->
+            {ok, Writer};
+        [] ->
+            {error, not_found};
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 insert(WriterName, Data) ->
     F = fun(Pid) -> alinkiot_tdengine_http_writer:insert(Pid, Data) end,
     ecpool:with_client(WriterName, F).

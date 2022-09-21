@@ -15,6 +15,8 @@
 
 -define(SERVER, ?MODULE).
 
+-include("alinkiot_tdengine.hrl").
+
 %%====================================================================
 %% API functions
 %%====================================================================
@@ -31,6 +33,7 @@ start_link() ->
 %% Before OTP 18 tuples must be used to specify a child. e.g.
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
+    ets:new(?WRITER_TAB, [set, named_table, public, {read_concurrency, true}]),
     {ok, {{one_for_all, 0, 1}, []}}.
 
 %%====================================================================
