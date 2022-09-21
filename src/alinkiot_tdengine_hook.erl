@@ -37,18 +37,16 @@ reload() ->
 
 
 on_message_publish(Msg, _Env) ->
-    check_and_store(Msg),
+    case alinkiot_tdengine_writer:lookup_writer(Msg#message.from) of
+        {ok, Writer} ->
+            alinkiot_tdengine_writer:write(Writer, Msg);
+        {error, not_found} ->
+            ignore;
+        {error, Reason} ->
+            logger:error("message ~p found writer failed:~p", [Msg, Reason])
+    end,
     {ok, Msg}.
 %%%===================================================================
 %%% Application callbacks
 %%%===================================================================
-check_and_store(Msg) ->
-    case check(Msg) of
-        {ok, Writer} ->
-            alinkiot_tdengine_writer:insert(Writer, Msg),
-            ok;
-        {error, not_found} ->
-            ok;
-        {error, Reason} ->
-            logger:error("message ~p found writer failed:~p", [Msg, Reason])
-    end
+

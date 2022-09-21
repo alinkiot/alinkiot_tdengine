@@ -13,7 +13,7 @@
 
 %% API
 -export([
-    start/0,
+    start/1,
     parse/1
 ]).
 
@@ -21,14 +21,13 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-start() ->
-    WriteOptions = application:get_env(alinkiot_tdengine, writer_options, []),
+start(WriteOptions) ->
     Host = proplists:get_value(host, WriteOptions, "127.0.0.1"),
     Port = proplists:get_value(host, WriteOptions, 6041),
     UserName = proplists:get_value(username, WriteOptions, "root"),
     Password = proplists:get_value(password, WriteOptions, "taosdata"),
-    CreateDB = <<"create database if not exist test;">>,
-    CreateStable =  <<"create stable if not exist test.test_stable(ts timestamp, v1 float, v2 tindyint)  tags (f1 tindyint);">>,
+    CreateDB = <<"create database alinkiot if not exist test;">>,
+    CreateStable =  <<"create stable if not exist alinkiot.test_stable(ts timestamp, v1 float, v2 tindyint)  tags (f1 tindyint);">>,
     {ok, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, CreateDB),
     {ok, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, CreateStable).
 
