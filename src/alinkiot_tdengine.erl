@@ -179,7 +179,7 @@ alter_user(Channel, UserName, NewPassword) ->
 
 
 join(Sep, L) -> join(Sep, L, false).
-join(Sep, L, Trip) -> join(Sep, L, Trip, fun to_binary/1).
+join(Sep, L, Trip) -> join(Sep, L, Trip, fun alinkutil_type:to_binary/1).
 join(_Sep, [], _, _) -> [];
 join(Sep, [<<>> | T], true, F) -> join(Sep, T, true, F);
 join(Sep, [H | T], Trip, F) -> [F(H) | join_prepend(Sep, T, Trip, F)].
@@ -189,9 +189,9 @@ join_prepend(Sep, [H | T], Trip, F) -> [Sep, F(H) | join_prepend(Sep, T, Trip, F
 
 
 format_value(V) when is_binary(V) -> <<"'", V/binary, "'">>;
-format_value(V) -> to_binary(V).
+format_value(V) -> alinkutil_type:to_binary(V).
 
-format_column(V) -> to_binary(V).
+format_column(V) -> alinkutil_type:to_binary(V).
 
 
 format_db(<<>>) -> <<>>;
@@ -282,25 +282,25 @@ format_group(_) ->
 format_where([], Acc) ->
     Acc;
 format_where([{Field, #{<<"$gt">> := Value}} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " > ", V/binary>> | Acc]);
 format_where([{Field, #{<<"$gte">> := Value}} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " >= ", V/binary>> | Acc]);
 format_where([{Field, #{<<"$lt">> := Value}} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " < ", V/binary>> | Acc]);
 format_where([{Field, #{<<"$gte">> := Value}} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " <= ", V/binary>> | Acc]);
 format_where([{Field, #{<<"$ne">> := Value}} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " <> ", V/binary>> | Acc]);
 format_where([{Field, #{<<"$regex">> := Value}} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " LIKE '", V/binary, "'">> | Acc]);
 format_where([{Field, Value} | Other], Acc) ->
-    V = to_binary(Value),
+    V = alinkutil_type:to_binary(Value),
     format_where(Other, [<<Field/binary, " = '", V/binary, "'">> | Acc]).
 format_where(#{<<"where">> := Where}) when Where =/= undefined, Where =/= <<>> ->
     Where1 =
@@ -320,11 +320,6 @@ format_where(_) ->
     <<>>.
 
 
-to_binary(V) when is_list(V) -> list_to_binary(V);
-to_binary(V) when is_integer(V) -> integer_to_binary(V);
-to_binary(V) when is_atom(V) -> atom_to_binary(V, utf8);
-to_binary(V) when is_float(V) -> list_to_binary(io_lib:format("~p", [V]));
-to_binary(V) when is_binary(V) -> V.
 
 
 transaction(Channel, Fun) ->

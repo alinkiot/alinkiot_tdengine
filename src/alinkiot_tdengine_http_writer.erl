@@ -45,10 +45,10 @@ connect(Opts) ->
 %%%===================================================================
 
 init([Opts]) ->
-    Host = to_binary(proplists:get_value(host, Opts, "127.0.0.1")),
-    Port = to_binary(proplists:get_value(port, Opts, 6041)),
-    UserName = to_binary(proplists:get_value(username, Opts, "root")),
-    Password = to_binary(proplists:get_value(password, Opts, "taosdata")),
+    Host = alinkutil_type:to_binary(proplists:get_value(host, Opts, "127.0.0.1")),
+    Port = alinkutil_type:to_binary(proplists:get_value(port, Opts, 6041)),
+    UserName = alinkutil_type:to_binary(proplists:get_value(username, Opts, "root")),
+    Password = alinkutil_type:to_binary(proplists:get_value(password, Opts, "taosdata")),
     PoolName = proplists:get_value(http_pool, Opts, default),
     FlushInterval = proplists:get_value(flush_interval, Opts, 0),
     FlushMsgLen = proplists:get_value(flush_msg_len, Opts, 0),
@@ -126,17 +126,3 @@ write(Msgs, State) ->
         Err ->
             logger:error("mod ~p parse datas ~p failed: ~p", [Mod, Msgs, Err])
     end.
-
-
-to_binary(S) when is_atom(S) ->
-    atom_to_binary(S);
-to_binary(S) when is_list(S) ->
-    list_to_binary(S);
-to_binary(S) when is_integer(S) ->
-    integer_to_binary(S);
-to_binary(S) when is_float(S) ->
-    float_to_binary(S);
-to_binary(S) when is_binary(S) ->
-    S;
-to_binary(S) ->
-    throw({badarg, S}).
