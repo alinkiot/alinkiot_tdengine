@@ -18,7 +18,7 @@
 ]).
 
 
--include_lib("emqx/include/emqx.hrl").
+-include_lib("emqx.hrl").
 -include("alinkiot_tdengine.hrl").
 %%%===================================================================
 %%% API
