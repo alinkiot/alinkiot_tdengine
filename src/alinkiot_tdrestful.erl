@@ -92,7 +92,7 @@ format_body(_StatusCode, #{
 format_body(_StatusCode, #{<<"status">> := <<"error">>, <<"code">> := Code, <<"desc">> := Reason}, _Formatter) ->
     {error, #{<<"code">> => Code, <<"desc">> => Reason}};
 format_body(StatusCode, Body, Formatter) when is_binary(Body) ->
-    format_body(StatusCode, jsx:decode(Body, [ {labels, binary},return_maps]), Formatter);
+    format_body(StatusCode, jiffy:decode(Body, [ {labels, binary},return_maps]), Formatter);
 format_body(_StatusCode, Body, _Formatter) ->
     {ok, Body}.
 
