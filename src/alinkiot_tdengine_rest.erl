@@ -11,6 +11,7 @@
 
 
 -export([
+    start/0,
     simple_query/5,
     simple_query/6,
     query/2,
@@ -18,6 +19,12 @@
     try_http_query/6,
     do_http_query/4
 ]).
+
+-define(DEFAULT_POOL, alinkiot_td_default).
+
+
+start() ->
+    hackney_pool:start_pool(?DEFAULT_POOL, [{max_connections, 100}]).
 
 simple_query(Host, Port, UserName, Passsword, Sql) ->
     simple_query(Host, Port, UserName, Passsword, <<>>, Sql).
@@ -38,7 +45,7 @@ query(Url, Sql) ->
 
 query(Url, Sql, #{authorization := Authorization} = QueryOpts) ->
     HttpOpts = [
-        {pool, maps:get(pool, QueryOpts, default)},
+        {pool, maps:get(pool, QueryOpts, ?DEFAULT_POOL)},
         {connect_timeout, 10000},
         {recv_timeout, 30000},
         {follow_redirectm, true},
