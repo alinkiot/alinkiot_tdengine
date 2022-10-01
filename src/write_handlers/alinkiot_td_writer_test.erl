@@ -51,5 +51,5 @@ parse_message(#message{payload = Payload, from = From, timestamp = Ts}) ->
     V1 = float_to_binary(maps:get(<<"v1">>, Payload)),
     V2 = integer_to_binary(maps:get(<<"v2">>, Payload)),
     F1 = integer_to_binary(maps:get(<<"f1">>, Payload)),
-    <<From/binary, " using ", STable/binary, "tags(", V1/binary,
+    <<From/binary, " using ", STable/binary, "tags(", F1/binary,
         ") values(", Time/binary, ",", V1/binary, ",", V2/binary, ")\n">>.
