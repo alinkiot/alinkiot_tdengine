@@ -1,4 +1,4 @@
--module(alinkiot_tdrestful).
+-module('alinkiot_tdrestful.erl').
 -author("kenneth").
 -include("alinkiot_tdengine.hrl").
 -define(HTTPOption, [{timeout, 60000}, {connect_timeout, 60000}]).
