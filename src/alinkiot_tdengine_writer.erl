@@ -70,7 +70,6 @@ write(WriterName, Msg) ->
 %%% Application callbacks
 %%%===================================================================
 writer_name(WriterName) ->
-    io:format("SSSS ~p~n", [WriterName]),
     list_to_atom("alinkiot_tdengine_" ++ alinkutil_type:to_list(WriterName)).
 
 

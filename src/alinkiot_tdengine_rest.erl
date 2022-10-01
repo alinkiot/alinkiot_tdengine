@@ -82,7 +82,6 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
     case hackney:request(post, Url, Headers, Sql, HttpOpts) of
         {ok, StatusCode, _Headers, ResponseBody}
             when StatusCode =:= 200 orelse StatusCode =:= 204 ->
-            io:format("~p~n", [ResponseBody]),
             case jiffy:decode(ResponseBody, [return_maps]) of
                 #{<<"code">> := 0} = ResponseMap ->
                     {Row, RespFromat} = format_td_return(ResponseMap),
