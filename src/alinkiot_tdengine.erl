@@ -60,14 +60,14 @@ create_schemas(#{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema
 
 
 %% 插入
-create_object(TableName, Object) ->
+create_object(TableName, #{<<"values">> := Values0} = Object) ->
     Values = format_batch(Object#{ <<"tableName">> => TableName, <<"values">> => [Values0]}),
     Sql = <<"INSERT INTO ", Values/binary, ";">>,
     request(Sql).
 
 
 %% 查询
-query_object(,TableName, Query) ->
+query_object(TableName, Query) ->
     Keys = format_keys(Query),
     Order = format_order(Query),
     Limit = format_limit(Query),
