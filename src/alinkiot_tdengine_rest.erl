@@ -96,9 +96,13 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
 
 
 
-format_td_return(#{<<"column_meta">> := ColumnMetas, <<"data">> := Data, <<"rows">> := Row}) ->
+format_td_return(#{<<"column_meta">> := ColumnMetas, <<"data">> := Datas, <<"rows">> := Row}) ->
     ColumnNames = lists:map(fun(ColumnMeta) -> hd(ColumnMeta) end, ColumnMetas),
-    Result = maps:from_list(lists:zip(ColumnNames, Data)),
+    Result =
+        lists:map(
+            fun(Data) ->
+                maps:from_list(lists:zip(ColumnNames, Data))
+        end, Datas),
     {Row, Result};
 format_td_return(ResponseMap) ->
     {0, ResponseMap}.
