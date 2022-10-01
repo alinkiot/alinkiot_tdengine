@@ -118,7 +118,7 @@ write(Msgs, State) ->
                     retry => 3
                 },
             case alinkiot_tdengine_rest:query(Url, Sql, QueryOpts) of
-                {ok, _} ->
+                {ok, _, _} ->
                     ok;
                 {error, Reason} ->
                     logger:error("Data ~p State ~p send data to tdengine failed:~p", [Msgs, State, Reason])

@@ -12,6 +12,7 @@
 
 -export([
     simple_query/5,
+    simple_query/6,
     query/2,
     query/3,
     try_http_query/6,
@@ -19,11 +20,14 @@
 ]).
 
 simple_query(Host, Port, UserName, Passsword, Sql) ->
+    simple_query(Host, Port, UserName, Passsword, <<>>, Sql).
+
+simple_query(Host, Port, UserName, Passsword, Database, Sql) ->
     HostB = alinkutil_type:to_binary(Host),
     PortB = alinkutil_type:to_binary(Port),
     UserNameB = alinkutil_type:to_binary(UserName),
     PassswordB = alinkutil_type:to_binary(Passsword),
-    Url = <<"http://", HostB/binary, ":", PortB/binary, "rest/sql">>,
+    Url = <<"http://", HostB/binary, ":", PortB/binary, "rest/sql/", Database/binary>>,
     query(Url, alinkutil_type:to_binary(Sql), #{username => UserNameB, password => PassswordB}).
 
 
@@ -67,7 +71,9 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
         {ok, StatusCode, _Headers, ResponseBody}
             when StatusCode =:= 200 orelse StatusCode =:= 204 ->
             case jiffy:decode(ResponseBody, [return_maps]) of
-                #{<<"status">> := <<"succ">>} = ResponseMap -> {ok, ResponseMap};
+                #{<<"code">> := 0} = ResponseMap ->
+                    {Row, RespFromat} = format_td_return(ResponseMap),
+                    {ok, Row, RespFromat};
                 ResponseMap -> {error, ResponseMap}
             end;
         {ok, StatusCode, _Headers, ResponseBody} ->
@@ -75,5 +81,15 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
                 {StatusCode, jiffy:decode(ResponseBody, [return_maps])}};
         {error, Reason} -> {error, Reason}
     end.
+
+
+
+format_td_return(#{<<"column_meta">> := ColumnMetas, <<"data">> := Data, <<"rows">> := Row}) ->
+    ColumnNames = lists:map(fun(ColumnMeta) -> hd(ColumnMeta) end, ColumnMetas),
+    Result = maps:from_list(lists:zip(ColumnNames, Data)),
+    {ok, Row, Result};
+format_td_return(ResponseMap) ->
+    {ok, 0, ResponseMap}.
+
 
 

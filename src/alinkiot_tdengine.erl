@@ -10,172 +10,136 @@
 -author("kenneth").
 -include("alinkiot_tdengine.hrl").
 %% API
--export([create_database/3, create_schemas/2, create_object/3, create_user/3, alter_user/3, delete_user/2, query_object/3, batch/2]).
--export([create_database/2,  create_schemas/1, create_object/2, create_user/2, alter_user/2, delete_user/1, query_object/2, batch/1]).
+-export([
+    show_database/0,
+    create_database/2,
+    create_schemas/1,
+    create_object/2,
+    create_user/2,
+    alter_user/2,
+    delete_user/1,
+    query_object/2,
+    batch/1
+]).
+
+
+show_database() ->
+    request(<<"SHOW DATABASES;">>).
 
 
 
 create_database(DataBase, Keep) ->
-    create_database(?DEFAULT, DataBase, Keep).
-
-create_database(Channel, DataBase, Keep) ->
-    transaction(Channel,
-        fun(Context) ->
-            KeepTime = integer_to_binary(Keep),
-            Sql = <<"CREATE DATABASE IF NOT EXISTS ", DataBase/binary, " KEEP ", KeepTime/binary>>,
-            run_sql(Context, execute_update, Sql)
-        end).
+    KeepTime = integer_to_binary(Keep),
+    Sql = <<"CREATE DATABASE IF NOT EXISTS ", DataBase/binary, " KEEP ", KeepTime/binary>>,
+    request(Sql).
 
 
-create_schemas(Schema) ->
-    create_schemas(?DEFAULT, Schema).
 
-create_schemas(Channel, #{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
-    transaction(Channel,
-        fun(#{<<"database">> := DB} = Context) ->
-            TagFields = list_to_binary(join(",", Tags, fun format_value/1)),
-            DB1 = format_db(DB),
-            Sql = <<"CREATE TABLE IF NOT EXISTS ", DB1/binary, TableName/binary, " USING ", STbName/binary, " TAGS (", TagFields/binary, ");">>,
-            run_sql(Context, execute_update, Sql)
-        end);
+create_schemas(#{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
+    TagFields = list_to_binary(join(",", Tags, fun format_value/1)),
+    Sql = <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " USING ", STbName/binary, " TAGS (", TagFields/binary, ");">>,
+    request(Sql);
 
-create_schemas(Channel, #{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema) ->
-    transaction(Channel,
-        fun(#{<<"database">> := DB} = Context) ->
-            DB1 = format_db(DB),
-            Fields = list_to_binary(join(",", ["createdAt TIMESTAMP"] ++ lists:foldr(
-                fun({FieldName, #{<<"type">> := Type}}, Acc) ->
-                    [<<FieldName/binary, " ", Type/binary>> | Acc]
-                end, [], Fields0))),
-            TagFields = list_to_binary(join(",", lists:foldr(
-                fun({TagName, #{<<"type">> := TType}}, Acc) ->
-                    [<<TagName/binary, " ", TType/binary>> | Acc]
-                end, [], maps:get(<<"tags">>, Schema, [])))),
-            Sql =
-                case TagFields of
-                    <<>> ->
-                        <<"CREATE TABLE IF NOT EXISTS ", DB1/binary, TableName/binary, " (", Fields/binary, ");">>;
-                    _ ->
-                        <<"CREATE TABLE IF NOT EXISTS ", DB1/binary, TableName/binary, " (", Fields/binary, ") TAGS (", TagFields/binary, ");">>
-                end,
-            run_sql(Context, execute_update, Sql)
-        end).
+create_schemas(#{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema) ->
+    Fields = list_to_binary(join(",", ["createdAt TIMESTAMP"] ++ lists:foldr(
+        fun({FieldName, #{<<"type">> := Type}}, Acc) ->
+            [<<FieldName/binary, " ", Type/binary>> | Acc]
+        end, [], Fields0))),
+    TagFields = list_to_binary(join(",", lists:foldr(
+        fun({TagName, #{<<"type">> := TType}}, Acc) ->
+            [<<TagName/binary, " ", TType/binary>> | Acc]
+        end, [], maps:get(<<"tags">>, Schema, [])))),
+    Sql =
+        case TagFields of
+            <<>> ->
+                <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ");">>;
+            _ ->
+                <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ") TAGS (", TagFields/binary, ");">>
+        end,
+    request(Sql).
 
 
 %% 插入
 create_object(TableName, Object) ->
-    create_object(?DEFAULT, TableName, Object).
-create_object(Channel, TableName, #{<<"values">> := Values0} = Object) ->
-    transaction(Channel,
-        fun(#{<<"database">> := DB} = Context) ->
-            Values = format_batch(Object#{<<"db">> => DB, <<"tableName">> => TableName, <<"values">> => [Values0]}),
-            Sql = <<"INSERT INTO ", Values/binary, ";">>,
-            run_sql(Context, execute_update, Sql)
-        end).
+    Values = format_batch(Object#{ <<"tableName">> => TableName, <<"values">> => [Values0]}),
+    Sql = <<"INSERT INTO ", Values/binary, ";">>,
+    request(Sql).
 
 
 %% 查询
-query_object(TableName, Query) ->
-    query_object(?DEFAULT, TableName, Query).
-query_object(Channel, TableName, Query) ->
-    transaction(Channel,
-        fun(#{<<"database">> := DB1} = Context) ->
-            Keys = format_keys(Query),
-            Order = format_order(Query),
-            Limit = format_limit(Query),
-            Offset = format_offset(Query),
-            Where = format_where(Query),
-            Interval = format_interval(Query),
-            Fill = format_fill(Query),
-            From = format_from(Query),
-            Group = format_group(Query),
-            DB = format_db(DB1),
-            Get =
-                fun(Keys1) ->
-                    Tail = list_to_binary(join(" ", [TableName, From, Where], true)),
-                    Sql = <<"SELECT ", Keys1/binary ," FROM ", DB/binary, Tail/binary>>,
-                    run_sql(Context, execute_query, Sql)
-                end,
-            Fun =
-                fun(Keys1) ->
-                    Tail = list_to_binary(join(" ", [TableName, From, Where, Interval, Fill, Order, Limit, Offset, Group], true)),
-                    Sql = <<"SELECT ", Keys1/binary, " FROM ", DB/binary, Tail/binary>>,
-                    run_sql(Context, execute_query, Sql)
-                end,
-            case Keys of
-                <<"count(*)">> ->
-                    Get(<<"count(*)">>);
-                _ ->
-                    case re:run(Keys, <<"last_row\\([^\\)]+\\)">>, [{capture,all,binary}]) == nomatch of
-                        false ->
-                            Get(Keys);
+query_object(,TableName, Query) ->
+    Keys = format_keys(Query),
+    Order = format_order(Query),
+    Limit = format_limit(Query),
+    Offset = format_offset(Query),
+    Where = format_where(Query),
+    Interval = format_interval(Query),
+    Fill = format_fill(Query),
+    From = format_from(Query),
+    Group = format_group(Query),
+    Get =
+        fun(Keys1) ->
+            Tail = list_to_binary(join(" ", [TableName, From, Where], true)),
+            Sql = <<"SELECT ", Keys1/binary ," FROM ", Tail/binary>>,
+            request(Sql)
+        end,
+    Fun =
+        fun(Keys1) ->
+            Tail = list_to_binary(join(" ", [TableName, From, Where, Interval, Fill, Order, Limit, Offset, Group], true)),
+            Sql = <<"SELECT ", Keys1/binary, " FROM ", Tail/binary>>,
+            request(Sql)
+        end,
+    case Keys of
+        <<"count(*)">> ->
+            Get(<<"count(*)">>);
+        _ ->
+            case re:run(Keys, <<"last_row\\([^\\)]+\\)">>, [{capture,all,binary}]) == nomatch of
+                false ->
+                    Get(Keys);
+                true ->
+                    List = re:split(Keys, <<",">>),
+                    Is = re:run(Keys, <<"AVG\\([^\\)]+\\)|MAX\\([^\\)]+\\)|MIN\\([^\\)]+\\)">>, [{capture,all,binary}]) == nomatch,
+                    case Is andalso lists:member(<<"count(*)">>, List) of
                         true ->
-                            List = re:split(Keys, <<",">>),
-                            Is = re:run(Keys, <<"AVG\\([^\\)]+\\)|MAX\\([^\\)]+\\)|MIN\\([^\\)]+\\)">>, [{capture,all,binary}]) == nomatch,
-                            case Is andalso lists:member(<<"count(*)">>, List) of
-                                true ->
-                                    case Get(<<"count(*)">>) of
+                            case Get(<<"count(*)">>) of
+                                {error, Reason} ->
+                                    {error, Reason};
+                                {ok, _, Result} ->
+                                    Keys1 = list_to_binary(join(",", lists:delete(<<"count(*)">>, List), true)),
+                                    case Fun(Keys1) of
+                                        {ok, Row, Records} ->
+                                            {ok, Row, maps:merge(Result, Records)};
                                         {error, Reason} ->
-                                            {error, Reason};
-                                        {ok, Result} ->
-                                            Keys1 = list_to_binary(join(",", lists:delete(<<"count(*)">>, List), true)),
-                                            case Fun(Keys1) of
-                                                {ok, Records} ->
-                                                    {ok, maps:merge(Result, Records)};
-                                                {error, Reason} ->
-                                                    {error, Reason}
-                                            end
-                                    end;
-                                false ->
-                                    Fun(Keys)
-                            end
+                                            {error, Reason}
+                                    end
+                            end;
+                        false ->
+                            Fun(Keys)
                     end
             end
-        end).
+    end.
 
 
+
+batch(Requests) when is_list(Requests) ->
+    Request1 = list_to_binary(join(" ", [format_batch(Request) || Request <- Requests])),
+    Sql = <<"INSERT INTO ", Request1/binary, ";">>,
+    request(Sql);
 batch(Batch) ->
-    batch(?DEFAULT, Batch).
-batch(Channel, Requests) when is_list(Requests) ->
-    transaction(Channel,
-        fun(#{<<"database">> := DB} = Context) ->
-            Request1 = list_to_binary(join(" ", [format_batch(Request#{ <<"db">> => DB }) || Request <- Requests])),
-            Sql = <<"INSERT INTO ", Request1/binary, ";">>,
-            run_sql(Context, execute_update, Sql)
-        end);
-batch(Channel, Batch) ->
-    transaction(Channel,
-        fun(#{<<"database">> := DB} = Context) ->
-            Values = format_batch(Batch#{<<"db">> => DB}),
-            Sql = <<"INSERT INTO ", Values/binary, ";">>,
-            run_sql(Context, execute_update, Sql)
-        end).
+    Values = format_batch(Batch),
+    Sql = <<"INSERT INTO ", Values/binary, ";">>,
+    request(Sql).
 
 
 create_user(UserName, Password) ->
-    create_user(?DEFAULT, UserName, Password).
-create_user(Channel, UserName, Password) ->
-    transaction(Channel,
-        fun(Context) ->
-            run_sql(Context, execute_update, <<"CREATE USER ", UserName/binary, " PASS ‘", Password/binary, "’">>)
-        end).
+    request(<<"CREATE USER ", UserName/binary, " PASS ‘", Password/binary, "’">>).
 
 
 delete_user(UserName) ->
-    delete_user(?DEFAULT, UserName).
-delete_user(Channel, UserName) ->
-    transaction(Channel,
-        fun(Context) ->
-            run_sql(Context, execute_update, <<"DROP USER ", UserName/binary>>)
-        end).
+    request(<<"DROP USER ", UserName/binary>>).
 
 alter_user(UserName, NewPassword) ->
-    alter_user(?DEFAULT, UserName, NewPassword).
-alter_user(Channel, UserName, NewPassword) ->
-    transaction(Channel,
-        fun(Context) ->
-            run_sql(Context, execute_update, <<"ALTER USER ", UserName/binary, " PASS ‘", NewPassword/binary, "’">>)
-        end).
+    request(<<"ALTER USER ", UserName/binary, " PASS ‘", NewPassword/binary, "’">>).
 
 
 join(Sep, L) -> join(Sep, L, false).
@@ -205,25 +169,23 @@ format_using(DB, Table) ->
 format_tags(<<>>) -> <<>>;
 format_tags(Tags) -> <<" TAGS (", Tags/binary, ")">>.
 
-format_batch(#{<<"db">> := DB, <<"tableName">> := TableName, <<"fields">> := Fields0, <<"values">> := Values0} = Batch) ->
+format_batch(#{<<"tableName">> := TableName, <<"fields">> := Fields0, <<"values">> := Values0} = Batch) ->
     Using = maps:get(<<"using">>, Batch, <<>>),
     Fields = list_to_binary(join(",", Fields0, false, fun format_column/1)),
     Values2 = [list_to_binary("(" ++ join(",", Values1, false, fun format_value/1) ++ ")") || Values1 <- Values0],
     Values = list_to_binary(join(" ", Values2)),
-    DB1 = format_db(DB),
-    Using1 = format_using(DB, Using),
+    Using1 = format_using(<<>>, Using),
     Tags = maps:get(<<"tags">>, Batch, []),
     TagFields = format_tags(list_to_binary(join(",", Tags, false, fun format_value/1))),
-    <<DB1/binary, TableName/binary, Using1/binary, TagFields/binary, " (", Fields/binary, ") VALUES ", Values/binary>>;
-format_batch(#{<<"db">> := DB,  <<"tableName">> := TableName, <<"values">> := Values0} = Batch) ->
+    <<TableName/binary, Using1/binary, TagFields/binary, " (", Fields/binary, ") VALUES ", Values/binary>>;
+format_batch(#{  <<"tableName">> := TableName, <<"values">> := Values0} = Batch) ->
     Using = maps:get(<<"using">>, Batch, <<>>),
     Values2 = [list_to_binary("(" ++ join(",", Values1, false, fun format_value/1) ++ ")") || Values1 <- Values0],
     Values = list_to_binary(join(" ", Values2)),
-    DB1 = format_db(DB),
-    Using1 = format_using(DB, Using),
+    Using1 = format_using(<<>>, Using),
     Tags = maps:get(<<"tags">>, Batch, []),
     TagFields = format_tags(list_to_binary(join(",", Tags, false, fun format_value/1))),
-    <<DB1/binary, TableName/binary, Using1/binary, TagFields/binary, " VALUES ", Values/binary>>.
+    <<TableName/binary, Using1/binary, TagFields/binary, " VALUES ", Values/binary>>.
 
 
 
@@ -321,31 +283,21 @@ format_where(_) ->
 
 
 
-
-transaction(Channel, Fun) ->
-    Context = get_env(),
-    Fun(Context).
-
-
-run_sql(#{ <<"url">> := Url, <<"username">> := UserName, <<"password">> := Password}, _Action, Sql) ->
-    case alinkiot_tdrestful:request(Url, UserName, Password, Sql) of
-        {ok, Result} ->
-            %logger:debug("Execute ~p (~p) ~p", [Url, Sql, Result]),
-            {ok, Result};
+request(Sql) ->
+    Host = application:get_env(alinkiot_tdengine, host, "127.0.0.1"),
+    Port = application:get_env(alinkiot_tdengine, port, 6041),
+    Username = application:get_env(alinkiot_tdengine, username, "root"),
+    Password = application:get_env(alinkiot_tdengine, password, "taosdata"),
+    Database = application:get_env(alinkiot_tdengine, database, ""),
+    case alinkiot_tdengine_rest:request(Host, Port, Username, Password, Database, Sql) of
+        {ok, Row, Result} ->
+            {ok, Row, format_result(Result)};
         {error, Reason} ->
-            logger:error("Execute Fail ~p (~p) ~p", [Url, Sql, Reason]),
+            logger:error("Execute Fail ~p ~p ~p (~p) ~p", [Host, Port, Sql, Reason]),
             {error, Reason}
     end.
 
 
-get_env() ->
-    #{
-        <<"url">> => list_to_binary(application:get_env(alinkiot_tdengine, url, "")),
-        <<"database">> => list_to_binary(application:get_env(alinkiot_tdengine, database, "")),
-        <<"username">> => list_to_binary(application:get_env(alinkiot_tdengine, username, "")),
-        <<"password">> => list_to_binary(application:get_env(alinkiot_tdengine, password, ""))
-    }.
-
-
-
+format_result(#{<<"count(*)">> := Count} = R) -> R#{<<"count">> => Count};
+format_result(R) -> R.
 

@@ -29,7 +29,7 @@ start() ->
     lists:foreach(fun(Mod) -> start(Mod) end, Mods).
 
 start(Mod) ->
-    WriteOptions = application:get_env(alinkiot_tdengine, writer_options, []),
+    WriteOptions = application:get_all_env(alinkiot_tdengine),
     {ok, ProductId} = proplists:get_value(alinkiot_td_writer, Mod:module_info(attributes)),
     Mod:start(WriteOptions),
     WriterName = writer_name(ProductId),

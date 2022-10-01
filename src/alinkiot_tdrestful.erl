@@ -7,20 +7,6 @@
 -export([request/4, do_request/3]).
 
 
-start() ->
-    lists:foreach(
-        fun(X) ->
-            Profile = list_to_atom(lists:concat([http, X])),
-            case whereis(list_to_atom(lists:concat([httpc, Profile]))) of
-                undefined ->
-                    httpc_profile_sup:start_child([{profile, Profile}]);
-                _ ->
-                    ok
-            end
-        end,
-        lists:seq(1, ?MAX_PROFILE)).
-
-
 show_database(Url, UserName, Password) ->
     request(Url, UserName, Password, <<"SHOW DATABASES;">>).
 

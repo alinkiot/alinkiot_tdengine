@@ -26,8 +26,8 @@ start(WriteOptions) ->
     Port = proplists:get_value(host, WriteOptions, 6041),
     UserName = proplists:get_value(username, WriteOptions, "root"),
     Password = proplists:get_value(password, WriteOptions, "taosdata"),
-    CreateDB = <<"create database alinkiot if not exist test;">>,
-    CreateStable =  <<"create stable if not exist alinkiot.test_stable(ts timestamp, v1 float, v2 tindyint)  tags (f1 tindyint);">>,
+    CreateDB = <<"create database alinkiot if not exists test;">>,
+    CreateStable =  <<"create stable test if not exists alinkiot.test_stable(ts timestamp, v1 float, v2 tinyint)  tags (f1 tinyint);">>,
     {ok, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, CreateDB),
     {ok, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, CreateStable).
 
