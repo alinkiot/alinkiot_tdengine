@@ -23,13 +23,14 @@
 %%%===================================================================
 start(WriteOptions) ->
     Host = proplists:get_value(host, WriteOptions, "127.0.0.1"),
-    Port = proplists:get_value(host, WriteOptions, 6041),
+    Port = proplists:get_value(port, WriteOptions, 6041),
     UserName = proplists:get_value(username, WriteOptions, "root"),
     Password = proplists:get_value(password, WriteOptions, "taosdata"),
-    CreateDB = <<"create database alinkiot if not exists test;">>,
-    CreateStable =  <<"create stable test if not exists alinkiot.test_stable(ts timestamp, v1 float, v2 tinyint)  tags (f1 tinyint);">>,
-    {ok, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, CreateDB),
-    {ok, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, CreateStable).
+    Database = proplists:get_value(database, WriteOptions, "alinkiot"),
+    CreateDB = <<"create database if not exists alinkiot;">>,
+    CreateStable =  <<"create stable if not exists alinkiot.test_stable(ts timestamp, v1 float, v2 tinyint)  tags (f1 tinyint);">>,
+    {ok, _, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, Database, CreateDB),
+    {ok, _, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, Database, CreateStable).
 
 
 parse(Msgs) ->

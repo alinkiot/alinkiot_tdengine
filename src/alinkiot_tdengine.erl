@@ -289,7 +289,7 @@ request(Sql) ->
     Username = application:get_env(alinkiot_tdengine, username, "root"),
     Password = application:get_env(alinkiot_tdengine, password, "taosdata"),
     Database = application:get_env(alinkiot_tdengine, database, ""),
-    case alinkiot_tdengine_rest:request(Host, Port, Username, Password, Database, Sql) of
+    case alinkiot_tdengine_rest:simple_query(Host, Port, Username, Password, Database, Sql) of
         {ok, Row, Result} ->
             {ok, Row, format_result(Result)};
         {error, Reason} ->

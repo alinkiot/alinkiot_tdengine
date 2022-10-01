@@ -30,7 +30,7 @@ start() ->
 
 start(Mod) ->
     WriteOptions = application:get_all_env(alinkiot_tdengine),
-    {ok, ProductId} = proplists:get_value(alinkiot_td_writer, Mod:module_info(attributes)),
+    ProductId = hd(proplists:get_value(alinkiot_td_writer, Mod:module_info(attributes))),
     Mod:start(WriteOptions),
     WriterName = writer_name(ProductId),
     NWriterOpts = [{http_pool, WriterName}, {handler_mod, Mod}|WriteOptions],
@@ -70,7 +70,8 @@ write(WriterName, Msg) ->
 %%% Application callbacks
 %%%===================================================================
 writer_name(WriterName) ->
-    {alinkiot_tdengine, WriterName}.
+    io:format("SSSS ~p~n", [WriterName]),
+    list_to_atom("alinkiot_tdengine_" ++ alinkutil_type:to_list(WriterName)).
 
 
 

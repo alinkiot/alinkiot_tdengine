@@ -20,6 +20,10 @@
     do_http_query/4
 ]).
 
+-export([
+    build_url/3
+]).
+
 -define(DEFAULT_POOL, alinkiot_td_default).
 
 
@@ -34,7 +38,8 @@ simple_query(Host, Port, UserName, Passsword, Database, Sql) ->
     PortB = alinkutil_type:to_binary(Port),
     UserNameB = alinkutil_type:to_binary(UserName),
     PassswordB = alinkutil_type:to_binary(Passsword),
-    Url = <<"http://", HostB/binary, ":", PortB/binary, "rest/sql/", Database/binary>>,
+    DatabaseB = alinkutil_type:to_binary(Database),
+    Url = build_url(HostB, PortB, DatabaseB),
     query(Url, alinkutil_type:to_binary(Sql), #{username => UserNameB, password => PassswordB}).
 
 
@@ -62,8 +67,8 @@ try_http_query(_Url, _Sql, _Authorization, _HttpOpts, Err, 0) ->
     Err;
 try_http_query(Url, Sql, Authorization, HttpOpts, _Err, Retry) ->
     case do_http_query(Url, Authorization, Sql, HttpOpts) of
-        {ok, Return} ->
-            {ok, Return};
+        {ok, Row, Result} ->
+            {ok, Row, Result};
         {error, Reason} ->
             try_http_query(Url, Sql, Authorization, HttpOpts, {error, Reason}, Retry - 1)
     end.
@@ -77,6 +82,7 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
     case hackney:request(post, Url, Headers, Sql, HttpOpts) of
         {ok, StatusCode, _Headers, ResponseBody}
             when StatusCode =:= 200 orelse StatusCode =:= 204 ->
+            io:format("~p~n", [ResponseBody]),
             case jiffy:decode(ResponseBody, [return_maps]) of
                 #{<<"code">> := 0} = ResponseMap ->
                     {Row, RespFromat} = format_td_return(ResponseMap),
@@ -85,7 +91,7 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
             end;
         {ok, StatusCode, _Headers, ResponseBody} ->
             {error,
-                {StatusCode, jiffy:decode(ResponseBody, [return_maps])}};
+                {StatusCode, catch jiffy:decode(ResponseBody, [return_maps])}};
         {error, Reason} -> {error, Reason}
     end.
 
@@ -94,9 +100,15 @@ do_http_query(Url, Authorization, Sql, HttpOpts) ->
 format_td_return(#{<<"column_meta">> := ColumnMetas, <<"data">> := Data, <<"rows">> := Row}) ->
     ColumnNames = lists:map(fun(ColumnMeta) -> hd(ColumnMeta) end, ColumnMetas),
     Result = maps:from_list(lists:zip(ColumnNames, Data)),
-    {ok, Row, Result};
+    {Row, Result};
 format_td_return(ResponseMap) ->
-    {ok, 0, ResponseMap}.
+    {0, ResponseMap}.
+
+
+build_url(HostB, PortB, <<>>) ->
+    <<"http://", HostB/binary, ":", PortB/binary, "/rest/sql">>;
+build_url(HostB, PortB, DatabaseB) ->
+    <<"http://", HostB/binary, ":", PortB/binary, "/rest/sql/", DatabaseB/binary>>.
 
 
 
