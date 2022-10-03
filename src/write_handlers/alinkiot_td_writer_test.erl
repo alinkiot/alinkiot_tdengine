@@ -46,10 +46,11 @@ parse_messages_to_sql(Msgs) ->
 %%% Internal functions
 %%%===================================================================
 parse_message(#message{payload = Payload, from = From, timestamp = Ts}) ->
+    PayloadMap = jiffy:decode(Payload, [return_maps]),
     STable = <<"test">>,
     Time = integer_to_binary(Ts),
-    V1 = float_to_binary(maps:get(<<"v1">>, Payload)),
-    V2 = integer_to_binary(maps:get(<<"v2">>, Payload)),
-    F1 = integer_to_binary(maps:get(<<"f1">>, Payload)),
+    V1 = float_to_binary(maps:get(<<"v1">>, PayloadMap, 0)),
+    V2 = integer_to_binary(maps:get(<<"v2">>, PayloadMap, 0)),
+    F1 = integer_to_binary(maps:get(<<"f1">>, PayloadMap, 0)),
     <<From/binary, " using ", STable/binary, "tags(", F1/binary,
         ") values(", Time/binary, ",", V1/binary, ",", V2/binary, ")\n">>.
