@@ -14,7 +14,7 @@
 %% API
 -export([
     start/1,
-    parse/1
+    parse_messages_to_sql/1
 ]).
 
 -include("emqx.hrl").
@@ -33,7 +33,7 @@ start(WriteOptions) ->
     {ok, _, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, Database, CreateStable).
 
 
-parse(Msgs) ->
+parse_messages_to_sql(Msgs) ->
     SqlContent =
         lists:foldl(
             fun(Msg, Acc) ->
