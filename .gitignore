@@ -4,13 +4,13 @@
 *.plt
 erl_crash.dump
 .concrete/DEV_MODE
-
+.idea/
 # rebar 2.x
 .rebar
 rel/example_project
 ebin/*.beam
 deps
-
+rebar.lock
 # rebar 3
 .rebar3
 _build/

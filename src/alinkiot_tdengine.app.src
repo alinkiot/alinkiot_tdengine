@@ -5,7 +5,10 @@
   {mod, {alinkiot_tdengine_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    hackney,
+    ecpool,
+    alinkutil
    ]},
   {env,[]},
   {modules, []},
