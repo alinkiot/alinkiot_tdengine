@@ -47,7 +47,7 @@ parse_messages_to_sql(Msgs) ->
 %%%===================================================================
 parse_message(#message{payload = Payload, from = From, timestamp = Ts}) ->
     PayloadMap = jiffy:decode(Payload, [return_maps]),
-    STable = <<"test">>,
+    STable = <<"test_stable">>,
     Time = integer_to_binary(Ts),
     V1 = float_to_binary(maps:get(<<"v1">>, PayloadMap, 0)),
     V2 = integer_to_binary(maps:get(<<"v2">>, PayloadMap, 0)),
