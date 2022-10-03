@@ -53,7 +53,7 @@ set_client_writer(ClientId, ProductId) ->
 
 lookup_writer(ClientId) ->
     case ets:lookup(?WRITER_TAB, ClientId) of
-        {ok, [{ClientId, Writer}]} ->
+        [{ClientId, Writer}] ->
             {ok, Writer};
         [] ->
             {error, not_found};

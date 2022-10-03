@@ -34,7 +34,7 @@
 }).
 
 insert(Pid, Message) ->
-    gen_server:cast(Pid, Message).
+    gen_server:cast(Pid, {insert, Message}).
 
 connect(Opts) ->
     gen_server:start_link(?MODULE, [Opts], []).

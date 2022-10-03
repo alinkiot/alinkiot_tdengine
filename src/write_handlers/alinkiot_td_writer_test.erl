@@ -14,7 +14,7 @@
 %% API
 -export([
     start/1,
-    parse/1
+    parse_messages_to_sql/1
 ]).
 
 -include("emqx.hrl").
@@ -33,7 +33,7 @@ start(WriteOptions) ->
     {ok, _, _} = alinkiot_tdengine_rest:simple_query(Host, Port, UserName, Password, Database, CreateStable).
 
 
-parse(Msgs) ->
+parse_messages_to_sql(Msgs) ->
     SqlContent =
         lists:foldl(
             fun(Msg, Acc) ->
@@ -46,10 +46,11 @@ parse(Msgs) ->
 %%% Internal functions
 %%%===================================================================
 parse_message(#message{payload = Payload, from = From, timestamp = Ts}) ->
-    STable = <<"test">>,
+    PayloadMap = jiffy:decode(Payload, [return_maps]),
+    STable = <<"test_stable">>,
     Time = integer_to_binary(Ts),
-    V1 = float_to_binary(maps:get(<<"v1">>, Payload)),
-    V2 = integer_to_binary(maps:get(<<"v2">>, Payload)),
-    F1 = integer_to_binary(maps:get(<<"f1">>, Payload)),
-    <<From/binary, " using ", STable/binary, "tags(", F1/binary,
+    V1 = float_to_binary(maps:get(<<"v1">>, PayloadMap, 0)),
+    V2 = integer_to_binary(maps:get(<<"v2">>, PayloadMap, 0)),
+    F1 = integer_to_binary(maps:get(<<"f1">>, PayloadMap, 0)),
+    <<From/binary, " using ", STable/binary, " tags(", F1/binary,
         ") values(", Time/binary, ",", V1/binary, ",", V2/binary, ")\n">>.
