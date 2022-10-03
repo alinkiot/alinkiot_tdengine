@@ -32,7 +32,7 @@ stop(_State) ->
 %%====================================================================
 
 load() ->
-    ok.
+    alinkiot_tdengine_hook:load().
 
 unload() ->
-    ok.
+    alinkiot_tdengine_hook:unload().
