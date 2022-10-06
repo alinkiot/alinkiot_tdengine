@@ -85,7 +85,7 @@ handle_cast(_Request, State = #state{}) ->
 
 handle_info({timeout, TimerRef, flush}, #state{cache_msgs = CacheMsgs,
                                                flush_time_ref = TimerRef,
-                                               flush_interval = FlushInterval} = State) when CacheMsgs =/= []->
+                                               flush_interval = FlushInterval} = State) ->
     write(CacheMsgs, State),
     {noreply, State#state{cache_msgs = [], flush_time_ref = start_timer(FlushInterval)}};
 handle_info(_Info, State = #state{}) ->
@@ -103,7 +103,8 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 start_timer(0) -> erlang:make_ref();
 start_timer(FlushInterval) -> erlang:start_timer(FlushInterval, self(), flush).
 
-
+write([], _State) ->
+    ignore;
 write(Msgs, State) ->
     #state{url = Url,
            authorization = Authorization,
