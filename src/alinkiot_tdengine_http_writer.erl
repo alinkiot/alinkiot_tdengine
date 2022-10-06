@@ -101,7 +101,7 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_timer(0) -> erlang:make_ref();
-start_timer(FlushInterval) -> timer:start_timer(FlushInterval, self(), flush).
+start_timer(FlushInterval) -> erlang:start_timer(FlushInterval, self(), flush).
 
 
 write(Msgs, State) ->
