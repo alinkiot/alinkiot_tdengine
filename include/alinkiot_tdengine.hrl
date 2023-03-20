@@ -9,7 +9,7 @@
 -author("kenneth").
 
 
--define(WRITER_TAB, alinkiot_tdengine_writer).
+
 -define(DEFAULT, default).
 -define(MAX_PROFILE, 100).
 -define(PRE, <<"alinkiot_">>).

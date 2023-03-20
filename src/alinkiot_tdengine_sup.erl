@@ -19,6 +19,5 @@ start_link() ->
 
 
 init([]) ->
-    ets:new(?WRITER_TAB, [set, named_table, public, {read_concurrency, true}]),
     {ok, {{one_for_all, 0, 1}, []}}.
 
