@@ -12,6 +12,7 @@
 %% API
 -export([
     show_database/0,
+    get_schema/1,
     create_database/2,
     create_schemas/1,
     create_object/2,
@@ -28,6 +29,11 @@
     async_query/1
 ]).
 
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+
 start_workers() ->
     Opts = application:get_all_env(alinkiot_tdengine),
     ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
@@ -38,16 +44,53 @@ show_database() ->
 
 
 create_database(DataBase, Keep) ->
-    KeepTime = integer_to_binary(Keep),
+    KeepTime = alinkutil_type:to_binary(Keep),
     Sql = <<"CREATE DATABASE IF NOT EXISTS ", DataBase/binary, " KEEP ", KeepTime/binary>>,
     request(Sql).
 
-
+get_schema(Table) ->
+    Sql = <<"describe ", Table/binary>>,
+    request(Sql).
 
 create_schemas(#{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
-    TagFields = list_to_binary(join(",", Tags, fun format_value/1)),
-    Sql = <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " USING ", STbName/binary, " TAGS (", TagFields/binary, ");">>,
-    request(Sql);
+    case get_schema(STbName) of
+        {ok, _, Schema} ->
+            TagTypes =
+                lists:foldl(
+                    fun(#{<<"note">> := <<"TAG">>,
+                          <<"field">> := FieldName,
+                          <<"type">> := FieldType}, Acc) ->
+                        Acc#{FieldName => FieldType};
+                       (_, Acc) ->
+                        Acc
+                end, #{}, Schema),
+            TableNameB = alinkutil_type:to_binary(TableName),
+            STbNameB = alinkutil_type:to_binary(STbName),
+            Sql0 = <<"create table if not exists ", TableNameB/binary, " using ", STbNameB/binary, "(">>,
+            {Sql1, Sql3} =
+                lists:foldl(
+                    fun(K, V, {Acc0, Acc1}) ->
+                        case maps:get(K, TagTypes, undefined) of
+                            undefined ->
+                                {Acc0, Acc1};
+                            TagType ->
+                                KB = alinkutil_type:to_binary(K),
+                                VB = to_sql_bin(TagType, V),
+                                case Acc0 of
+                                    <<>> ->
+                                        {KB, VB};
+                                    _ ->
+                                        {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
+                                end
+                        end
+                end, {<<>>, <<>>}, Tags),
+            Sql2 = <<") tags(">>,
+            Sql4 = <<")">>,
+            Sql = <<Sql0/binary, Sql1/binary, Sql2/binary, Sql3/binary, Sql4/binary>>,
+            request(Sql);
+        {error, Reason} ->
+            {error, Reason}
+    end;
 
 create_schemas(#{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema) ->
     Fields = list_to_binary(join(",", ["createdAt TIMESTAMP"] ++ lists:foldr(
@@ -310,3 +353,25 @@ query(Sql) ->
 
 async_query(Sql) ->
     ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:async_query(Pid, Sql) end).
+
+
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+to_sql_bin(<<"TIMESTAMP">>, V) ->
+    VB = alinkutil_type:to_binary(V),
+    case re:run(VB, <<"^[0-9]+$">>, [{capture,all,binary}]) of
+        nomatch ->
+            <<"'", VB/binary, "'">>;
+        _ ->
+            VB
+    end;
+to_sql_bin(Type, V) ->
+    case lists:member(Type, [<<"NCHAR">>, <<"JSON">>, <<"VARCHAR">>]) of
+        true ->
+            VB = alinkutil_type:to_binary(V),
+            <<"'", VB/binary, "'">>;
+        _ ->
+            alinkutil_type:to_binary(V)
+    end.
