@@ -29,10 +29,10 @@ alinkiot_tdengine:create_schema(#{
     <<"table">> => <<"tablename">>,
     <<"using">> => <<"stablename">>,
     <<"tags">> => [
-        #{<<"name">> => <<"tagname1">>, <<"type">> => <<"int">>},
-        #{<<"name">> => <<"tagname2">>, <<"type">> => <<"float">>},
-        #{<<"name">> => <<"tagname3">>, <<"type">> => <<"string">>},
-        #{<<"name">> => <<"tagname4">>, <<"type">> => <<"time">>}
+        #{<<"name">> => <<"tagname1">>, <<"value">> => 12},
+        #{<<"name">> => <<"tagname2">>, <<"value">> => 1.0},
+        #{<<"name">> => <<"tagname3">>, <<"value">> => <<"3333">>},
+        #{<<"name">> => <<"tagname4">>, <<"value">> => 1234567890}
     ]
 }).
 %% 创建普通表
@@ -54,7 +54,7 @@ alinkiot_tdengine:create_schema(#{
 
 
 %% 插入设备
-alinkiot_tdengine:create_object(<<"SW00000001">>, #{
+alinkiot_tdengine:insert_object(<<"SW00000001">>, #{
     <<"using">> => <<"Product">>,
     <<"tags">> => [<<"p0001">>, <<"00000001">>],
     <<"values">> => [

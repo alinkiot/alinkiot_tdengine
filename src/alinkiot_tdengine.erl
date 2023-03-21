@@ -15,7 +15,7 @@
     get_schema/1,
     create_database/2,
     create_schema/1,
-    create_object/2,
+    insert_object/2,
     create_user/2,
     alter_user/2,
     delete_user/1,
@@ -32,11 +32,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-
-start_workers() ->
-    Opts = application:get_all_env(alinkiot_tdengine),
-    ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
 
 show_database() ->
     request(<<"SHOW DATABASES;">>).
@@ -56,28 +51,14 @@ get_schema(Table) ->
 create_schema(#{<<"table">> := _TableName, <<"using">> := _STbName, <<"tags">> := []}) ->
     {error, tags_empty};
 create_schema(#{<<"table">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
-    case get_schema(STbName) of
-        {ok, _, Schema} ->
-            TagTypes =
-                lists:foldl(
-                    fun(#{<<"note">> := <<"TAG">>,
-                          <<"field">> := FieldName,
-                          <<"type">> := FieldType}, Acc) ->
-                        Acc#{FieldName => FieldType};
-                       (_, Acc) ->
-                        Acc
-                end, #{}, Schema),
-            TableNameB = alinkutil_type:to_binary(TableName),
-            STbNameB = alinkutil_type:to_binary(STbName),
-            Sql0 = <<"create table if not exists ", TableNameB/binary, " using ", STbNameB/binary, "(">>,
-            {Sql1, Sql3} = create_subtable_fields_bin(TagTypes, Tags),
-            Sql2 = <<") tags(">>,
-            Sql4 = <<")">>,
-            Sql = <<Sql0/binary, Sql1/binary, Sql2/binary, Sql3/binary, Sql4/binary>>,
-            request(Sql);
-        {error, Reason} ->
-            {error, Reason}
-    end;
+    TableNameB = alinkutil_type:to_binary(TableName),
+    STbNameB = alinkutil_type:to_binary(STbName),
+    Sql0 = <<"create table if not exists ", TableNameB/binary, " using ", STbNameB/binary, "(">>,
+    {Sql1, Sql3} = create_subtable_fields_bin(Tags),
+    Sql2 = <<") tags(">>,
+    Sql4 = <<")">>,
+    Sql = <<Sql0/binary, Sql1/binary, Sql2/binary, Sql3/binary, Sql4/binary>>,
+    request(Sql);
 create_schema(#{<<"fields">> := []}) ->
     {error, fields_empty};
 create_schema(#{<<"stable">> := TableName, <<"fields">> := Fields} = Schema) ->
@@ -108,7 +89,7 @@ create_schema(#{<<"table">> := TableName, <<"fields">> := Fields} = Schema) ->
     request(Sql).
 
 %% 插入
-create_object(TableName, #{<<"values">> := Values0} = Object) ->
+insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     Values = format_batch(Object#{ <<"tableName">> => TableName, <<"values">> => [Values0]}),
     Sql = <<"INSERT INTO ", Values/binary, ";">>,
     request(Sql).
@@ -344,49 +325,26 @@ request(Sql) ->
 format_result(#{<<"count(*)">> := Count} = R) -> R#{<<"count">> => Count};
 format_result(R) -> R.
 
-query(Sql) ->
-    ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:query(Pid, Sql) end).
-
-async_query(Sql) ->
-    ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:async_query(Pid, Sql) end).
-
 
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-to_sql_bin(<<"TIMESTAMP">>, V) ->
-    VB = alinkutil_type:to_binary(V),
-    case re:run(VB, <<"^[0-9]+$">>, [{capture,all,binary}]) of
-        nomatch ->
-            <<"'", VB/binary, "'">>;
-        _ ->
-            VB
-    end;
-to_sql_bin(Type, V) ->
-    case lists:member(Type, [<<"NCHAR">>, <<"JSON">>, <<"VARCHAR">>]) of
-        true ->
-            VB = alinkutil_type:to_binary(V),
-            <<"'", VB/binary, "'">>;
-        _ ->
-            alinkutil_type:to_binary(V)
-    end.
+to_sql_bin(V) when is_binary(V)->
+    <<"'", V/binary, "'">>;
+to_sql_bin(V) ->
+    alinkutil_type:to_binary(V).
 
-create_subtable_fields_bin(FieldTypes, Fields) ->
+create_subtable_fields_bin(Fields) ->
     lists:foldl(
-        fun(#{<<"name">> := K, <<"type">> := V}, {Acc0, Acc1}) ->
-            case maps:get(K, FieldTypes, undefined) of
-                undefined ->
-                    {Acc0, Acc1};
-                TagType ->
-                    KB = alinkutil_type:to_binary(K),
-                    VB = to_sql_bin(TagType, V),
-                    case Acc0 of
-                        <<>> ->
-                            {KB, VB};
-                        _ ->
-                            {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
-                    end
+        fun(#{<<"name">> := K, <<"value">> := V}, {Acc0, Acc1}) ->
+            KB = alinkutil_type:to_binary(K),
+            VB = to_sql_bin(V),
+            case Acc0 of
+                <<>> ->
+                    {KB, VB};
+                _ ->
+                    {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
             end
         end, {<<>>, <<>>}, Fields).
 

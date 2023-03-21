@@ -9,9 +9,10 @@
 -behaviour(gen_server).
 
 -export([
-    async_query/2,
-    query/2,
-    connect/1
+    connect/1,
+    start_workers/0,
+    insert/1,
+    insert/2
 ]).
 -export([
     init/1,
@@ -28,12 +29,20 @@
     authorization
 }).
 
+%%%===================================================================
+%%% API
+%%%===================================================================
+%% [#{<<"addr">> => Addr, <<"productId">> => Addr, <<"ts">> => Ts, <<"N">> => V}]
+insert(DeviceStat) ->
+    ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:async_query(Pid, DeviceStat) end).
 
-async_query(Pid, Query) ->
+
+start_workers() ->
+    Opts = application:get_all_env(alinkiot_tdengine),
+    ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
+
+insert(Pid, Query) ->
     gen_server:cast(Pid, {query, Query}).
-
-query(Pid, Query) ->
-    gen_server:call(Pid, {query, Query}).
 
 connect(Opts) ->
     gen_server:start_link(?MODULE, [Opts], []).
