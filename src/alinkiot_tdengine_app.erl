@@ -18,7 +18,7 @@
 start(_StartType, _StartArgs) ->
     alinkiot_tdengine_rest:start(),
     {ok, Sup} = alinkiot_tdengine_sup:start_link(),
-    alinkiot_tdengine:start(),
+    alinkiot_tdengine:start_workers(),
     {ok, Sup}.
 
 %%--------------------------------------------------------------------

@@ -23,12 +23,12 @@
 ]).
 
 -export([
-    start/0,
+    start_workers/0,
     query/1,
     async_query/1
 ]).
 
-start() ->
+start_workers() ->
     Opts = application:get_all_env(alinkiot_tdengine),
     ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
 
