@@ -20,7 +20,8 @@
     alter_user/2,
     delete_user/1,
     query_object/2,
-    batch/1
+    batch/1,
+    request/1
 ]).
 
 %%%===================================================================
@@ -81,6 +82,7 @@ create_schema(#{<<"table">> := TableName, <<"fields">> := Fields} = Schema) ->
                 <<Sql0/binary, Sql1/binary, ") tags (", Sql2/binary, ")">>
         end,
     request(Sql).
+
 
 %% 插入
 insert_object(TableName, #{<<"values">> := Values0} = Object) ->
