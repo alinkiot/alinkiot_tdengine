@@ -26,7 +26,11 @@
 
 -record(state, {
     url,
-    authorization
+    authorization,
+    flush_interval,
+    flush_msg_len,
+    flush_time_ref,
+    cache_msgs
 }).
 
 %%%===================================================================
@@ -42,7 +46,7 @@ start_workers() ->
     ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
 
 insert(Pid, Query) ->
-    gen_server:cast(Pid, {query, Query}).
+    gen_server:cast(Pid, {insert, Query}).
 
 connect(Opts) ->
     gen_server:start_link(?MODULE, [Opts], []).
@@ -61,28 +65,36 @@ init([Opts]) ->
     Url = alinkiot_tdengine_rest:build_url(Host, Port, DataBase),
     Token = base64:encode(<<UserName/binary, ":", Password/binary>>),
     Authorization = <<"Basic ", Token/binary>>,
+    FlushInterval = proplists:get_value(flush_interval, Opts, 0),
+    FlushMsgLen = proplists:get_value(flush_msg_len, Opts, 0),
+    hackney_pool:start_pool(alinkiot_tdengine_worker_pool, [{max_connections, 20}]),
     State = #state{
         url = Url,
-        authorization = Authorization
+        authorization = Authorization,
+        flush_interval = FlushInterval,
+        flush_msg_len = FlushMsgLen,
+        flush_time_ref = start_timer(FlushInterval),
+        cache_msgs = []
     },
     {ok, State}.
 
-handle_call({query, Query}, _From, State) ->
-    {reply, do_query(Query, State), State};
+
 handle_call(_Request, _From, State = #state{}) ->
     {reply, ok, State}.
 
-handle_cast({query, Query}, State) ->
-    case do_query(Query, State) of
-        {ok, _, _} ->
-            ok;
-        {error, Reason} ->
-            logger:error("query ~p State ~p query from tdengine failed:~p", [Query, State, Reason])
-    end,
-    {noreply, State};
+handle_cast({insert, Msg}, #state{cache_msgs = CacheMsgs,
+                                  flush_msg_len = FlushMsgLen} = State) when length(CacheMsgs) >= FlushMsgLen - 1 ->
+    write([Msg|CacheMsgs], State),
+    {noreply, State#state{cache_msgs = []}};
+handle_cast({insert, Data}, #state{cache_msgs = CacheMsgs} = State) ->
+    {noreply, State#state{cache_msgs = [Data|CacheMsgs]}};
 handle_cast(_Request, State = #state{}) ->
     {noreply, State}.
 
+
+handle_info({timeout, _TimerRef, flush}, #state{cache_msgs = CacheMsgs, flush_interval = FlushInterval} = State) ->
+    write(CacheMsgs, State),
+    {noreply, State#state{cache_msgs = [], flush_time_ref = start_timer(FlushInterval)}};
 handle_info(_Info, State = #state{}) ->
     {noreply, State}.
 
@@ -95,12 +107,28 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-do_query(Query, State) ->
+start_timer(0) -> erlang:make_ref();
+start_timer(FlushInterval) -> erlang:start_timer(FlushInterval, self(), flush).
+
+write([], _State) ->
+    ignore;
+write(Msgs, State) ->
     #state{url = Url,
-           authorization = Authorization} = State,
+        authorization = Authorization} = State,
+    Sql =  build_sql(Msgs),
     QueryOpts =
         #{
+            pool => alinkiot_tdengine_worker_pool,
             authorization => Authorization,
-            retry => 5
+            retry => 3
         },
-    alinkiot_tdengine_rest:query(Url, Query, QueryOpts).
+    case alinkiot_tdengine_rest:query(Url, Sql, QueryOpts) of
+        {ok, _, _} ->
+            ok;
+        {error, Reason} ->
+            logger:error("Data ~p State ~p send data to tdengine failed:~p", [Msgs, State, Reason])
+    end.
+
+
+build_sql(Msgs) ->
+    <<"insert into ">>.

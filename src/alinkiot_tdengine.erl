@@ -23,12 +23,6 @@
     batch/1
 ]).
 
--export([
-    start_workers/0,
-    query/1,
-    async_query/1
-]).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -313,13 +307,19 @@ format_where(_) ->
 
 
 request(Sql) ->
-    case query(Sql) of
+    Host = application:get_env(alinkiot_tdengine, host, "127.0.0.1"),
+    Port = application:get_env(alinkiot_tdengine, port, 6041),
+    Username = application:get_env(alinkiot_tdengine, username, "root"),
+    Password = application:get_env(alinkiot_tdengine, password, "taosdata"),
+    Database = application:get_env(alinkiot_tdengine, database, ""),
+    case alinkiot_tdengine_rest:simple_query(Host, Port, Username, Password, Database, Sql) of
         {ok, Row, Result} ->
             {ok, Row, format_result(Result)};
         {error, Reason} ->
-            logger:error("Execute Fail ~p ~p", [Sql, Reason]),
+            logger:error("Execute Fail ~p ~p ~p (~p) ~p", [Host, Port, Sql, Reason]),
             {error, Reason}
     end.
+
 
 
 format_result(#{<<"count(*)">> := Count} = R) -> R#{<<"count">> => Count};
