@@ -8,42 +8,50 @@ TDengine for erlang
 alinkiot_tdengine:create_database(<<"alinkiot">>, 3650).
 
 %% 创建超级表
-alinkiot_tdengine:create_schemas(#{
-    <<"tableName">> => <<"Product">>,
+alinkiot_tdengine:create_schema(#{
+    <<"stable">> => <<"stablename">>,
     <<"fields">> => [
-        {<<"config">>, #{
-            <<"type">> => <<"INT">>
-        }},
-        {<<"secret">>, #{
-            <<"type">> => <<"FLOAT">>
-        }},
-        {<<"description">>, #{
-            <<"type">> => <<"NCHAR(10)">>
-        }},
-        {<<"flag">>, #{
-            <<"type">> => <<"BOOL">>
-        }}
+        #{<<"name">> => <<"fieldname1">>, <<"type">> => <<"int">>},
+        #{<<"name">> => <<"fieldname2">>, <<"type">> => <<"float">>},
+        #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"string">>},
+        #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"time">>}
     ],
     <<"tags">> => [
-        {
-            <<"product">>, #{
-            <<"type">> => <<"NCHAR(10)">>
-        }
-        },
-        {
-            <<"devaddr">>, #{
-            <<"type">> => <<"NCHAR(10)">>
-        }
-        }
+        #{<<"name">> => <<"tagname1">>, <<"type">> => <<"int">>},
+        #{<<"name">> => <<"tagname2">>, <<"type">> => <<"float">>},
+        #{<<"name">> => <<"tagname3">>, <<"type">> => <<"string">>},
+        #{<<"name">> => <<"tagname4">>, <<"type">> => <<"time">>}
     ]
 }).
 
 %% 创建子表
-alinkiot_tdengine:create_schemas(#{
-    <<"tableName">> => <<"SW00000001">>,
-    <<"using">> => <<"Product">>,
-    <<"tags">> => [<<"p0001">>, <<"00000001">>]
+alinkiot_tdengine:create_schema(#{
+    <<"table">> => <<"tablename">>,
+    <<"using">> => <<"stablename">>,
+    <<"tags">> => [
+        #{<<"name">> => <<"tagname1">>, <<"type">> => <<"int">>},
+        #{<<"name">> => <<"tagname2">>, <<"type">> => <<"float">>},
+        #{<<"name">> => <<"tagname3">>, <<"type">> => <<"string">>},
+        #{<<"name">> => <<"tagname4">>, <<"type">> => <<"time">>}
+    ]
 }).
+%% 创建普通表
+alinkiot_tdengine:create_schema(#{
+    <<"table">> => <<"tablename">>,
+    <<"fields">> => [
+        #{<<"name">> => <<"fieldname1">>, <<"type">> => <<"int">>},
+        #{<<"name">> => <<"fieldname2">>, <<"type">> => <<"float">>},
+        #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"string">>},
+        #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"time">>}
+    ],
+    <<"tags">> => [
+        #{<<"name">> => <<"tagname1">>, <<"type">> => <<"int">>},
+        #{<<"name">> => <<"tagname2">>, <<"type">> => <<"float">>},
+        #{<<"name">> => <<"tagname3">>, <<"type">> => <<"string">>},
+        #{<<"name">> => <<"tagname4">>, <<"type">> => <<"time">>}
+    ]
+}).
+
 
 %% 插入设备
 alinkiot_tdengine:create_object(<<"SW00000001">>, #{

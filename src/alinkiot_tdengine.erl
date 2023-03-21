@@ -52,6 +52,9 @@ get_schema(Table) ->
     Sql = <<"describe ", Table/binary>>,
     request(Sql).
 
+%% tags => [#{name => tagname, type => tagtype},....]
+create_schema(#{<<"table">> := _TableName, <<"using">> := _STbName, <<"tags">> := []}) ->
+    {error, tags_empty};
 create_schema(#{<<"table">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
     case get_schema(STbName) of
         {ok, _, Schema} ->
@@ -67,23 +70,7 @@ create_schema(#{<<"table">> := TableName, <<"using">> := STbName, <<"tags">> := 
             TableNameB = alinkutil_type:to_binary(TableName),
             STbNameB = alinkutil_type:to_binary(STbName),
             Sql0 = <<"create table if not exists ", TableNameB/binary, " using ", STbNameB/binary, "(">>,
-            {Sql1, Sql3} =
-                lists:foldl(
-                    fun(K, V, {Acc0, Acc1}) ->
-                        case maps:get(K, TagTypes, undefined) of
-                            undefined ->
-                                {Acc0, Acc1};
-                            TagType ->
-                                KB = alinkutil_type:to_binary(K),
-                                VB = to_sql_bin(TagType, V),
-                                case Acc0 of
-                                    <<>> ->
-                                        {KB, VB};
-                                    _ ->
-                                        {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
-                                end
-                        end
-                end, {<<>>, <<>>}, Tags),
+            {Sql1, Sql3} = create_subtable_fields_bin(TagTypes, Tags),
             Sql2 = <<") tags(">>,
             Sql4 = <<")">>,
             Sql = <<Sql0/binary, Sql1/binary, Sql2/binary, Sql3/binary, Sql4/binary>>,
@@ -91,39 +78,32 @@ create_schema(#{<<"table">> := TableName, <<"using">> := STbName, <<"tags">> := 
         {error, Reason} ->
             {error, Reason}
     end;
-create_schema(#{<<"stable">> := TableName, <<"fields">> := Fields0} = Schema) ->
-    Fields = list_to_binary(join(",", ["time TIMESTAMP"] ++ lists:foldr(
-        fun({FieldName, #{<<"type">> := Type}}, Acc) ->
-            [<<FieldName/binary, " ", Type/binary>> | Acc]
-        end, [], Fields0))),
-    TagFields = list_to_binary(join(",", lists:foldr(
-        fun({TagName, #{<<"type">> := TType}}, Acc) ->
-            [<<TagName/binary, " ", TType/binary>> | Acc]
-        end, [], maps:get(<<"tags">>, Schema, [])))),
+create_schema(#{<<"fields">> := []}) ->
+    {error, fields_empty};
+create_schema(#{<<"stable">> := TableName, <<"fields">> := Fields} = Schema) ->
+    TableNameB = alinkutil_type:to_binary(TableName),
+    Sql0 = <<"create stable if not exiests ", TableNameB/binary, " (">>,
+    Sql1 = create_table_fields_bin(Fields),
     Sql =
-        case TagFields of
-            <<>> ->
-                <<"CREATE STABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ");">>;
-            _ ->
-                <<"CREATE STABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ") TAGS (", TagFields/binary, ");">>
+        case maps:get(<<"tags">>, Schema, []) of
+            [] ->
+                <<Sql0/binary, Sql1/binary, ")">>;
+            Tags ->
+                Sql2 = create_table_fields_bin(Tags),
+                <<Sql0/binary, Sql1/binary, ") tags (", Sql2/binary, ")">>
         end,
     request(Sql);
-
-create_schema(#{<<"table">> := TableName, <<"fields">> := Fields0} = Schema) ->
-    Fields = list_to_binary(join(",", ["time TIMESTAMP"] ++ lists:foldr(
-        fun({FieldName, #{<<"type">> := Type}}, Acc) ->
-            [<<FieldName/binary, " ", Type/binary>> | Acc]
-        end, [], Fields0))),
-    TagFields = list_to_binary(join(",", lists:foldr(
-        fun({TagName, #{<<"type">> := TType}}, Acc) ->
-            [<<TagName/binary, " ", TType/binary>> | Acc]
-        end, [], maps:get(<<"tags">>, Schema, [])))),
+create_schema(#{<<"table">> := TableName, <<"fields">> := Fields} = Schema) ->
+    TableNameB = alinkutil_type:to_binary(TableName),
+    Sql0 = <<"create table if not exiests ", TableNameB/binary, " (">>,
+    Sql1 = create_table_fields_bin(Fields),
     Sql =
-        case TagFields of
-            <<>> ->
-                <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ");">>;
-            _ ->
-                <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ") TAGS (", TagFields/binary, ");">>
+        case maps:get(<<"tags">>, Schema, []) of
+            [] ->
+                <<Sql0/binary, Sql1/binary, ")">>;
+            Tags ->
+                Sql2 = create_table_fields_bin(Tags),
+                <<Sql0/binary, Sql1/binary, ") tags (", Sql2/binary, ")">>
         end,
     request(Sql).
 
@@ -391,3 +371,46 @@ to_sql_bin(Type, V) ->
         _ ->
             alinkutil_type:to_binary(V)
     end.
+
+create_subtable_fields_bin(FieldTypes, Fields) ->
+    lists:foldl(
+        fun(#{<<"name">> := K, <<"type">> := V}, {Acc0, Acc1}) ->
+            case maps:get(K, FieldTypes, undefined) of
+                undefined ->
+                    {Acc0, Acc1};
+                TagType ->
+                    KB = alinkutil_type:to_binary(K),
+                    VB = to_sql_bin(TagType, V),
+                    case Acc0 of
+                        <<>> ->
+                            {KB, VB};
+                        _ ->
+                            {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
+                    end
+            end
+        end, {<<>>, <<>>}, Fields).
+
+
+create_table_fields_bin(Fields) ->
+    lists:foldl(
+        fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) ->
+            RealType = transform_field_type(Type),
+            case Acc of
+                <<>> ->
+                    <<Name/binary, " ", RealType/binary>>;
+                _ ->
+                    <<Acc/binary, ",", Name/binary, " ", RealType/binary>>
+            end
+    end, <<>>, Fields).
+
+
+transform_field_type(<<"time">>) ->
+    <<"TIMESTAMP">>;
+transform_field_type(<<"int">>) ->
+    <<"INT">>;
+transform_field_type(<<"float">>) ->
+    <<"FLOAT">>;
+transform_field_type(<<"string">>) ->
+    <<"VARCHAR(100)">>;
+transform_field_type(Type) ->
+    Type.
