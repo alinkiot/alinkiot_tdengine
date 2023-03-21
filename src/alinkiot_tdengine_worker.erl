@@ -36,7 +36,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-%% [#{<<"addr">> => Addr, <<"productId">> => Addr, <<"ts">> => Ts, <<"N">> => V}]
+%% #{<<"addr">> => Addr, <<"productId">> => Addr, <<"ts">> => Ts, <<"N">> => V}
 insert(DeviceStat) ->
     ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:async_query(Pid, DeviceStat) end).
 
@@ -131,4 +131,43 @@ write(Msgs, State) ->
 
 
 build_sql(Msgs) ->
-    <<"insert into ">>.
+    Sql0 = <<"insert into">>,
+    Sql1 =
+        lists:foldl(
+            fun(Msg, Acc) ->
+                SubSql = build_sub_sql(Msg),
+                <<Acc/binary, SubSql/binary>>
+        end, <<>>, Msgs),
+    <<Sql0/binary, Sql1/binary>>.
+
+
+build_sub_sql(Msg) ->
+    #{
+        <<"addr">> := Addr,
+        <<"prodcutId">> := ProductId
+    } = Msg,
+    Table = <<"alinkiot_", Addr/binary>>,
+    ProductIdB = alinkutil_type:to_binary(ProductId),
+    STable = <<"alinkiot_", ProductIdB/binary>>,
+    AddrB = alinkiot_tdengine_common:to_sql_bin(Addr),
+
+    {Sql0, Sql1} =
+        lists:foldl(
+            fun(K, V, {Acc0, Acc1}) ->
+                case lists:member(K, [<<"addr">>, <<"product_id">>, <<"ts">>]) of
+                    true ->
+                        {Acc0, Acc1};
+                    _ ->
+                        KB = alinkutil_type:to_binary(K),
+                        VB = alinkiot_tdengine_common:to_sql_bin(V),
+                        case Acc0 of
+                            <<>> ->
+                                {KB, VB};
+                            _ ->
+                                {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
+                        end
+                end
+            end, {<<>>, <<>>}, Msg),
+    Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
+        AddrB/binary, ",", ProductIdB/binary, ") values (">>,
+    <<" ", Table/binary, "(", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
