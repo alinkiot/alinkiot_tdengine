@@ -14,7 +14,7 @@
     show_database/0,
     get_schema/1,
     create_database/2,
-    create_schemas/1,
+    create_schema/1,
     create_object/2,
     create_user/2,
     alter_user/2,
@@ -52,7 +52,7 @@ get_schema(Table) ->
     Sql = <<"describe ", Table/binary>>,
     request(Sql).
 
-create_schemas(#{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
+create_schema(#{<<"table">> := TableName, <<"using">> := STbName, <<"tags">> := Tags}) ->
     case get_schema(STbName) of
         {ok, _, Schema} ->
             TagTypes =
@@ -91,9 +91,26 @@ create_schemas(#{<<"tableName">> := TableName, <<"using">> := STbName, <<"tags">
         {error, Reason} ->
             {error, Reason}
     end;
+create_schema(#{<<"stable">> := TableName, <<"fields">> := Fields0} = Schema) ->
+    Fields = list_to_binary(join(",", ["time TIMESTAMP"] ++ lists:foldr(
+        fun({FieldName, #{<<"type">> := Type}}, Acc) ->
+            [<<FieldName/binary, " ", Type/binary>> | Acc]
+        end, [], Fields0))),
+    TagFields = list_to_binary(join(",", lists:foldr(
+        fun({TagName, #{<<"type">> := TType}}, Acc) ->
+            [<<TagName/binary, " ", TType/binary>> | Acc]
+        end, [], maps:get(<<"tags">>, Schema, [])))),
+    Sql =
+        case TagFields of
+            <<>> ->
+                <<"CREATE STABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ");">>;
+            _ ->
+                <<"CREATE STABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ") TAGS (", TagFields/binary, ");">>
+        end,
+    request(Sql);
 
-create_schemas(#{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema) ->
-    Fields = list_to_binary(join(",", ["createdAt TIMESTAMP"] ++ lists:foldr(
+create_schema(#{<<"table">> := TableName, <<"fields">> := Fields0} = Schema) ->
+    Fields = list_to_binary(join(",", ["time TIMESTAMP"] ++ lists:foldr(
         fun({FieldName, #{<<"type">> := Type}}, Acc) ->
             [<<FieldName/binary, " ", Type/binary>> | Acc]
         end, [], Fields0))),
@@ -109,7 +126,6 @@ create_schemas(#{<<"tableName">> := TableName, <<"fields">> := Fields0} = Schema
                 <<"CREATE TABLE IF NOT EXISTS ", TableName/binary, " (", Fields/binary, ") TAGS (", TagFields/binary, ");">>
         end,
     request(Sql).
-
 
 %% 插入
 create_object(TableName, #{<<"values">> := Values0} = Object) ->
