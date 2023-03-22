@@ -11,7 +11,8 @@
 
 %% API
 -export([
-    to_sql_bin/1
+    to_sql_bin/1,
+    transform_field_type/1
 ]).
 
 %%%===================================================================
@@ -21,6 +22,18 @@ to_sql_bin(V) when is_binary(V)->
     <<"'", V/binary, "'">>;
 to_sql_bin(V) ->
     alinkutil_type:to_binary(V).
+
+
+transform_field_type(<<"time">>) ->
+    <<"TIMESTAMP">>;
+transform_field_type(<<"int">>) ->
+    <<"INT">>;
+transform_field_type(<<"float">>) ->
+    <<"FLOAT">>;
+transform_field_type(<<"string">>) ->
+    <<"VARCHAR(100)">>;
+transform_field_type(Type) ->
+    Type.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

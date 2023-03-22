@@ -15,6 +15,12 @@
     get_schema/1,
     create_database/2,
     create_schema/1,
+    create_alink_schema/2,
+    del_columns/2,
+    del_column/2,
+    add_columns/2,
+    add_column/2,
+
     insert_object/2,
     create_user/2,
     alter_user/2,
@@ -58,30 +64,89 @@ create_schema(#{<<"fields">> := []}) ->
     {error, fields_empty};
 create_schema(#{<<"stable">> := TableName, <<"fields">> := Fields} = Schema) ->
     TableNameB = alinkutil_type:to_binary(TableName),
-    Sql0 = <<"create stable if not exiests ", TableNameB/binary, " (">>,
+    Sql0 = <<"create stable if not exists ", TableNameB/binary, " (time TIMESTAMP">>,
     Sql1 = create_table_fields_bin(Fields),
     Sql =
         case maps:get(<<"tags">>, Schema, []) of
             [] ->
                 <<Sql0/binary, Sql1/binary, ")">>;
             Tags ->
-                Sql2 = create_table_fields_bin(Tags),
+                Sql2 = create_table_tags_bin(Tags),
                 <<Sql0/binary, Sql1/binary, ") tags (", Sql2/binary, ")">>
         end,
     request(Sql);
 create_schema(#{<<"table">> := TableName, <<"fields">> := Fields} = Schema) ->
     TableNameB = alinkutil_type:to_binary(TableName),
-    Sql0 = <<"create table if not exiests ", TableNameB/binary, " (">>,
+    Sql0 = <<"create table if not exists ", TableNameB/binary, " (time TIMESTAMP">>,
     Sql1 = create_table_fields_bin(Fields),
     Sql =
         case maps:get(<<"tags">>, Schema, []) of
             [] ->
                 <<Sql0/binary, Sql1/binary, ")">>;
             Tags ->
-                Sql2 = create_table_fields_bin(Tags),
+                Sql2 = create_table_tags_bin(Tags),
                 <<Sql0/binary, Sql1/binary, ") tags (", Sql2/binary, ")">>
         end,
     request(Sql).
+
+
+create_alink_schema(ProductId, ThingInfo) ->
+    ProductIdB = alinkutil_type:to_binary(ProductId),
+    STable = <<"alinkiot_", ProductIdB/binary>>,
+    FilterThingInfo =
+        lists:filter(
+            fun(#{<<"name">> := Name}) ->
+                Name =/= <<"time">>
+        end, ThingInfo),
+    Tags = [
+        #{<<"name">> => <<"addr">>, <<"type">> => <<"string">>},
+        #{<<"name">> => <<"product_id">>, <<"type">> => <<"int">>}
+    ],
+    CreateSchemaParam =
+        #{
+            <<"stable">> => STable,
+            <<"fields">> => FilterThingInfo,
+            <<"tags">> => Tags
+        },
+    create_schema(CreateSchemaParam).
+
+
+add_columns(Table, Columns) ->
+    lists:foreach(
+        fun(Column) ->
+            case add_column(Table, Column) of
+                {ok, _, _} ->
+                    ok;
+                {error, Reason} ->
+                    logger:error("add column ~p in table ~p failed ~p",
+                        [Column, Table, Reason])
+            end
+        end, Columns).
+
+add_column(Table, #{<<"name">> := Name, <<"type">> := Type}) ->
+    FieldType = alinkiot_tdengine_common:transform_field_type(Type),
+    Sql = <<"alter table ", Table/binary, " add column ", Name/binary, " ", FieldType/binary>>,
+    request(Sql).
+
+
+del_columns(Table, Columns) ->
+    lists:foreach(
+        fun(Column) ->
+            case del_column(Table, Column) of
+                {ok, _, _} ->
+                    ok;
+                {error, Reason} ->
+                    logger:error("delete column ~p in table ~p failed ~p",
+                        [Column, Table, Reason])
+            end
+    end, Columns).
+
+del_column(Table, Column) ->
+    Sql = <<"alter table ", Table/binary, " drop column ", Column/binary>>,
+    request(Sql).
+
+
+
 
 
 %% 插入
@@ -318,7 +383,7 @@ request(Sql) ->
         {ok, Row, Result} ->
             {ok, Row, format_result(Result)};
         {error, Reason} ->
-            logger:error("Execute Fail ~p ~p ~p (~p) ~p", [Host, Port, Sql, Reason]),
+            logger:error("Execute Fail ~p ~p ~p ~p", [Host, Port, Sql, Reason]),
             {error, Reason}
     end.
 
@@ -332,16 +397,11 @@ format_result(R) -> R.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-to_sql_bin(V) when is_binary(V)->
-    <<"'", V/binary, "'">>;
-to_sql_bin(V) ->
-    alinkutil_type:to_binary(V).
-
 create_subtable_fields_bin(Fields) ->
     lists:foldl(
         fun(#{<<"name">> := K, <<"value">> := V}, {Acc0, Acc1}) ->
             KB = alinkutil_type:to_binary(K),
-            VB = to_sql_bin(V),
+            VB = alinkiot_tdengine_common:to_sql_bin(V),
             case Acc0 of
                 <<>> ->
                     {KB, VB};
@@ -350,27 +410,22 @@ create_subtable_fields_bin(Fields) ->
             end
         end, {<<>>, <<>>}, Fields).
 
-
 create_table_fields_bin(Fields) ->
     lists:foldl(
         fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) ->
-            RealType = transform_field_type(Type),
+            RealType = alinkiot_tdengine_common:transform_field_type(Type),
+            <<Acc/binary, ",", Name/binary, " ", RealType/binary>>
+        end, <<>>, Fields).
+
+
+create_table_tags_bin(Tags) ->
+    lists:foldl(
+        fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) ->
+            RealType = alinkiot_tdengine_common:transform_field_type(Type),
             case Acc of
                 <<>> ->
                     <<Name/binary, " ", RealType/binary>>;
                 _ ->
                     <<Acc/binary, ",", Name/binary, " ", RealType/binary>>
             end
-    end, <<>>, Fields).
-
-
-transform_field_type(<<"time">>) ->
-    <<"TIMESTAMP">>;
-transform_field_type(<<"int">>) ->
-    <<"INT">>;
-transform_field_type(<<"float">>) ->
-    <<"FLOAT">>;
-transform_field_type(<<"string">>) ->
-    <<"VARCHAR(100)">>;
-transform_field_type(Type) ->
-    Type.
+    end, <<>>, Tags).

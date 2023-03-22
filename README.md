@@ -14,7 +14,7 @@ alinkiot_tdengine:create_schema(#{
         #{<<"name">> => <<"fieldname1">>, <<"type">> => <<"int">>},
         #{<<"name">> => <<"fieldname2">>, <<"type">> => <<"float">>},
         #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"string">>},
-        #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"time">>}
+        #{<<"name">> => <<"fieldname4">>, <<"type">> => <<"time">>}
     ],
     <<"tags">> => [
         #{<<"name">> => <<"tagname1">>, <<"type">> => <<"int">>},
@@ -37,12 +37,12 @@ alinkiot_tdengine:create_schema(#{
 }).
 %% 创建普通表
 alinkiot_tdengine:create_schema(#{
-    <<"table">> => <<"tablename">>,
+    <<"table">> => <<"tablename2">>,
     <<"fields">> => [
         #{<<"name">> => <<"fieldname1">>, <<"type">> => <<"int">>},
         #{<<"name">> => <<"fieldname2">>, <<"type">> => <<"float">>},
         #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"string">>},
-        #{<<"name">> => <<"fieldname3">>, <<"type">> => <<"time">>}
+        #{<<"name">> => <<"fieldname4">>, <<"type">> => <<"time">>}
     ],
     <<"tags">> => [
         #{<<"name">> => <<"tagname1">>, <<"type">> => <<"int">>},
