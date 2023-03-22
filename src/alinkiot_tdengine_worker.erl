@@ -38,7 +38,7 @@
 %%%===================================================================
 %% #{<<"addr">> => Addr, <<"productId">> => Addr, <<"ts">> => Ts, <<"N">> => V}
 insert(DeviceStat) ->
-    ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:async_query(Pid, DeviceStat) end).
+    ecpool:with_client(alinkiot_tdengine_worker_pool, fun(Pid) -> alinkiot_tdengine_worker:insert(Pid, DeviceStat) end).
 
 
 start_workers() ->
