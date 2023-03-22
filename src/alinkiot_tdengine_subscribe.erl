@@ -23,7 +23,7 @@
 load() ->
     ehttpd_hook:add('PUT_product', {?MODULE, sync_product}),
     ehttpd_hook:add('POST_product', {?MODULE, sync_product}),
-    alinkdata_hooks:add('data.publish', {?MODULE, data_publish}),
+    alinkdata_hooks:add('data.publish', {?MODULE, data_publish, []}),
     ok.
 
 
