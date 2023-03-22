@@ -13,7 +13,8 @@
 -export([
     load/0,
     unload/0,
-    sync_product/3
+    sync_product/3,
+    data_publish/3
 ]).
 
 %%%===================================================================
@@ -22,12 +23,14 @@
 load() ->
     ehttpd_hook:add('PUT_product', {?MODULE, sync_product}),
     ehttpd_hook:add('POST_product', {?MODULE, sync_product}),
+    alinkdata_hooks:add('data.publish', {?MODULE, data_publish}),
     ok.
 
 
 unload() ->
     ehttpd_hook:del('PUT_product', {?MODULE, sync_product}),
     ehttpd_hook:del('POST_product', {?MODULE, sync_product}),
+    alinkdata_hooks:del('data.publish', {?MODULE, data_publish}),
     ok.
 
 
@@ -37,6 +40,10 @@ sync_product('POST_product', #{<<"thing">> := Thing}, _) when Thing =/= <<>> ->
     alinkiot_tdengine_sync:sync_add();
 sync_product(_, _, _) ->
     ok.
+
+
+data_publish(ProductId, Addr, Data) ->
+    alinkiot_tdengine_worker:insert(Data#{<<"addr">> => Addr, <<"productId">> => ProductId}).
 %%%===================================================================
 %%% Application callbacks
 %%%===================================================================
