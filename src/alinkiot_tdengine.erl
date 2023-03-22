@@ -155,6 +155,28 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     Sql = <<"INSERT INTO ", Values/binary, ";">>,
     request(Sql).
 
+%% 查询
+query_alink(Param) ->
+    STable = parse_stable(Param).
+
+
+
+
+
+parse_stable(#{<<"addr">> := Addr}) ->
+    AddrB = alinkutil_type:to_binary(Addr),
+    <<"device_", AddrB/binary>>;
+parse_stable(#{<<"productId">> := ProductId}) ->
+    ProductIdB = alinkutil_type:to_binary(ProductId),
+    <<"alinkiot_", ProductIdB/binary>>.
+
+
+query() ->
+    ok.
+
+
+
+
 
 %% 查询
 query_object(TableName, Query) ->
