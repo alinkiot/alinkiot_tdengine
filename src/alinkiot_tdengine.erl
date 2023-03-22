@@ -156,18 +156,40 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     Sql = <<"INSERT INTO ", Values/binary, ";">>,
     request(Sql).
 
-%% 查询，先只做分页，不牵扯到数据库的运算
+%% 查询，
 query_alink(Param) ->
-    STable = parse_stable(Param),
-    Limit = parse_page(Param),
-    Sql = <<"select * from ", STable/binary, Limit/binary>>,
-    request(Sql).
+    Table = parse_table(Param),
+    Interval = parse_interval(Param),
+    FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, [])),
+    Sql =
+        case Interval of
+            <<>> ->
+                <<"select ", FieldsBin/binary, " from ", Table/binary>>;
+            _ ->
+                <<"select ", FieldsBin/binary, " from ", Table/binary, Interval/binary>>
+        end,
+    case parse_page(Param) of
+        <<>> ->
+            request(Sql);
+        Limit ->
+            case request(<<"select count(1) from (", Sql/binary, ")">>) of
+                {ok, _, [#{<<"couint(1)">> := Count}]} ->
+                    case request(<<Sql/binary, Limit/binary>>) of
+                        {ok, _, Rows} ->
+                            {ok, {Count, Rows}};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
+            end
+    end.
 
 
-parse_stable(#{<<"addr">> := Addr}) ->
+parse_table(#{<<"addr">> := Addr}) ->
     AddrB = alinkutil_type:to_binary(Addr),
     <<"device_", AddrB/binary>>;
-parse_stable(#{<<"productId">> := ProductId}) ->
+parse_table(#{<<"productId">> := ProductId}) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     <<"alinkiot_", ProductIdB/binary>>.
 
@@ -181,6 +203,11 @@ parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
 parse_page(_Param) ->
     <<>>.
 
+parse_interval(#{<<"interval">> := Interval}) ->
+    IntervalB = alinkutil_type:to_binary(Interval),
+    <<" interval (", IntervalB/binary, ") ">>;
+parse_interval(_) ->
+    <<>>.
 
 
 
@@ -463,3 +490,12 @@ create_table_tags_bin(Tags) ->
                     <<Acc/binary, ",", Name/binary, " ", RealType/binary>>
             end
     end, <<>>, Tags).
+
+to_fields_bin(<<>>, []) ->
+    <<"*">>;
+to_fields_bin(Interval, Fields) ->
+    Fields1 = lists:filter(fun(F) -> F =/= <<"time">> end, Fields),
+    lists:foldl(
+        fun(F, Acc) ->
+            <<Acc/binary, ",", F/binary>>
+    end, <<"time">>, Fields1).
