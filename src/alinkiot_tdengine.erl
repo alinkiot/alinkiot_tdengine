@@ -20,6 +20,7 @@
     del_column/2,
     add_columns/2,
     add_column/2,
+    query_alink/1,
 
     insert_object/2,
     create_user/2,
@@ -155,12 +156,12 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     Sql = <<"INSERT INTO ", Values/binary, ";">>,
     request(Sql).
 
-%% 查询
+%% 查询，先只做分页，不牵扯到数据库的运算
 query_alink(Param) ->
-    STable = parse_stable(Param).
-
-
-
+    STable = parse_stable(Param),
+    Limit = parse_page(Param),
+    Sql = <<"select * from ", STable/binary, Limit/binary>>,
+    request(Sql).
 
 
 parse_stable(#{<<"addr">> := Addr}) ->
@@ -170,11 +171,22 @@ parse_stable(#{<<"productId">> := ProductId}) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     <<"alinkiot_", ProductIdB/binary>>.
 
+parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
+    PageSize = alinkutil_type:to_integer(RPageSize),
+    PageNum = alinkutil_type:to_integer(RPageNum),
+    Offset = PageSize * (PageNum - 1),
+    PageSizeB = alinkutil_type:to_binary(PageSize),
+    OffsetB = alinkutil_type:to_integer(Offset),
+    <<"LIMIT ", OffsetB/binary, ",", PageSizeB/binary>>;
+parse_page(_Param) ->
+    <<>>.
 
-query() ->
-    ok.
 
 
+
+
+
+%% 下面的代码有点乱七八糟，找机会整理 TODO
 
 
 
