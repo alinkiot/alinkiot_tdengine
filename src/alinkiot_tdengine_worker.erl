@@ -11,6 +11,7 @@
 -export([
     connect/1,
     start_workers/0,
+    stop_workers/0,
     insert/1,
     insert/2
 ]).
@@ -44,6 +45,9 @@ insert(DeviceStat) ->
 start_workers() ->
     Opts = application:get_all_env(alinkiot_tdengine),
     ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
+
+stop_workers() ->
+    ecpool_sup:stop_pool(alinkiot_tdengine_worker_pool).
 
 insert(Pid, Query) ->
     gen_server:cast(Pid, {insert, Query}).

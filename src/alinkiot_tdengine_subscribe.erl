@@ -1,0 +1,42 @@
+%%%-------------------------------------------------------------------
+%%% @author yqfclid
+%%% @copyright (C) 2023
+%%% @doc
+%%%
+%%% @end
+%%% Created : 22. 3月 2023 下午1:16
+%%%-------------------------------------------------------------------
+-module(alinkiot_tdengine_subscribe).
+-author("yqfclid").
+
+%% API
+-export([
+    load/0,
+    unload/0,
+    sync_product/3
+]).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+load() ->
+    ehttpd_hook:add('PUT_product', {?MODULE, sync_product}),
+    ehttpd_hook:add('POST_product', {?MODULE, sync_product}),
+    ok.
+
+
+unload() ->
+    ehttpd_hook:del('PUT_product', {?MODULE, sync_product}),
+    ehttpd_hook:del('POST_product', {?MODULE, sync_product}),
+    ok.
+
+
+sync_product('PUT_product', #{<<"id">> := Id}, _) when is_binary(Id) ->
+    alinkiot_tdengine_sync:sync(alinkutil_type:to_integer(Id));
+sync_product('POST_product', #{<<"thing">> := Thing}, _) when Thing =/= <<>> ->
+    alinkiot_tdengine_sync:sync_add();
+sync_product(_, _, _) ->
+    ok.
+%%%===================================================================
+%%% Application callbacks
+%%%===================================================================

@@ -12,14 +12,15 @@
 %% API
 -export([
     sync/0,
-    sync/1
+    sync/1,
+    sync_add/0
 ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 sync() ->
-    case alinkdata_dao:query_no_count(#{}) of
+    case alinkdata_dao:query_no_count('QUERY_product', #{}) of
         {ok, Products} ->
             lists:foreach(
                 fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when Thing =/= <<>> ->
@@ -32,7 +33,7 @@ sync() ->
     end.
 
 sync(ProductId) ->
-    case alinkdata_dao:query_no_count(#{<<"id">> => ProductId}) of
+    case alinkdata_dao:query_no_count('QUERY_product', #{<<"id">> => ProductId}) of
         {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
             repaire(ProductId, Thing);
         {ok, _} ->
@@ -40,9 +41,37 @@ sync(ProductId) ->
         {error, Reason} ->
             logger:error("sync product info failed:~p", [Reason])
     end.
+
+sync_add() ->
+    case alinkdata_dao:query_no_count('QUERY_product', #{}) of
+        {ok, Products} ->
+            lists:foreach(
+                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when Thing =/= <<>> ->
+                    check_add(ProductId, jiffy:decode(Thing, [return_maps]));
+                    (_) ->
+                        ok
+                end, Products);
+        {error, Reason} ->
+            logger:error("sync product info failed:~p", [Reason])
+    end.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+check_add(ProductId, ThingInfo) ->
+    ProductIdB = alinkutil_type:to_binary(ProductId),
+    STable = <<"alinkiot_", ProductIdB/binary>>,
+    case alinkiot_tdengine:request(<<"show stables">>) of
+        {ok, _, ExistsSTables} ->
+            case lists:member(STable, maps:values(ExistsSTables)) of
+                true ->
+                    ok;
+                false ->
+                    alinkiot_tdengine:create_alink_schema(ProductId, ThingInfo)
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
 repaire(ProductId, ThingInfo) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
