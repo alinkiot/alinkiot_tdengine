@@ -44,7 +44,8 @@ insert(DeviceStat) ->
 
 start_workers() ->
     Opts = application:get_all_env(alinkiot_tdengine),
-    ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, Opts).
+    AllOpts = [{pool_type, round_robin},{auto_reconnect, 3}|Opts],
+    ecpool_sup:start_pool(alinkiot_tdengine_worker_pool, alinkiot_tdengine_worker, AllOpts).
 
 stop_workers() ->
     ecpool_sup:stop_pool(alinkiot_tdengine_worker_pool).
@@ -148,7 +149,7 @@ build_sql(Msgs) ->
 build_sub_sql(Msg) ->
     #{
         <<"addr">> := Addr,
-        <<"prodcutId">> := ProductId
+        <<"productId">> := ProductId
     } = Msg,
     Table = <<"device_", Addr/binary>>,
     ProductIdB = alinkutil_type:to_binary(ProductId),
