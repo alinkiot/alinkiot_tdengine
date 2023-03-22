@@ -91,7 +91,8 @@ repaire(ProductId, ThingInfo) ->
 get_stable_schema(STable) ->
     case alinkiot_tdengine:request(<<"show stables">>) of
         {ok, _, ExistsSTables} ->
-            case lists:member(STable, maps:values(ExistsSTables)) of
+            ExistsSTablesList = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            case lists:member(STable, ExistsSTablesList) of
                 true ->
                     case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
                         {ok, _, Schema} ->
