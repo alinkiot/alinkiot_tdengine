@@ -158,11 +158,12 @@ build_sub_sql(Msg) ->
 
     {Sql0, Sql1} =
         lists:foldl(
-            fun(K, #{<<"value">> := V}, {Acc0, Acc1}) ->
+            fun(K, RV, {Acc0, Acc1}) ->
                 case lists:member(K, [<<"addr">>, <<"product_id">>, <<"ts">>]) of
                     true ->
                         {Acc0, Acc1};
                     _ ->
+                        #{<<"value">> := V} = RV,
                         KB = alinkutil_type:to_binary(K),
                         VB = alinkiot_tdengine_common:to_sql_bin(V),
                         case Acc0 of
@@ -171,9 +172,7 @@ build_sub_sql(Msg) ->
                             _ ->
                                 {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
                         end
-                end;
-               (_, _, {Acc0, Acc1}) ->
-                   {Acc0, Acc1}
+                end
             end, {<<>>, <<>>}, Msg),
     Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
         AddrB/binary, ",", ProductIdB/binary, ") values (">>,
