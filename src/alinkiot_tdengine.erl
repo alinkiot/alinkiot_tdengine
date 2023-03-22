@@ -493,9 +493,15 @@ create_table_tags_bin(Tags) ->
 
 to_fields_bin(<<>>, []) ->
     <<"*">>;
-to_fields_bin(Interval, Fields) ->
+to_fields_bin(<<>>, Fields) ->
     Fields1 = lists:filter(fun(F) -> F =/= <<"time">> end, Fields),
     lists:foldl(
         fun(F, Acc) ->
             <<Acc/binary, ",", F/binary>>
-    end, <<"time">>, Fields1).
+    end, <<"time">>, Fields1);
+to_fields_bin(_, Fields) ->
+    Fields1 = lists:filter(fun(F) -> F =/= <<"time">> end, Fields),
+    lists:foldl(
+        fun(F, Acc) ->
+            <<Acc/binary, ", avg(", F/binary, ") as ", F/binary>>
+        end, <<"_wstart as time">>, Fields1).
