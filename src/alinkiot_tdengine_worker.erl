@@ -171,7 +171,9 @@ build_sub_sql(Msg) ->
                             _ ->
                                 {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
                         end
-                end
+                end;
+               (_, {Acc0, Acc1}) ->
+                   {Acc0, Acc1}
             end, {<<>>, <<>>}, Msg),
     Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
         AddrB/binary, ",", ProductIdB/binary, ") values (">>,
