@@ -11,6 +11,7 @@
 -include("alinkiot_tdengine.hrl").
 %% API
 -export([
+    init/0,
     show_database/0,
     get_schema/1,
     create_database/2,
@@ -34,6 +35,14 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+init() ->
+    case application:get_env(alinkiot_tdengine, database) of
+        {ok, DB} ->
+            create_database(DB, 3650);
+        undefined ->
+            ok
+    end.
+
 
 show_database() ->
     request(<<"SHOW DATABASES;">>).
