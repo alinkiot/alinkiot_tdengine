@@ -285,7 +285,9 @@ parse_where(#{<<"where">> := Where}) ->
             KB = alinkutil_type:to_binary(K),
             VB = alinkiot_tdengine_common:to_sql_bin(V),
             <<Acc, " and ", KB/binary, " = ", VB/binary>>
-    end, <<>>, Where).
+    end, <<>>, Where);
+parse_where(_) ->
+    <<>>.
 
 
 %% 下面的代码有点乱七八糟，找机会整理 TODO
