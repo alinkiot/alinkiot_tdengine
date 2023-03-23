@@ -36,7 +36,7 @@ unload() ->
     ok.
 
 
-sync_product('PUT_product', #{<<"id">> := Id}, _) when is_binary(Id) ->
+sync_product('PUT_product', #{<<"id">> := Id}, _) ->
     alinkiot_tdengine_sync:sync(alinkutil_type:to_integer(Id));
 sync_product('POST_product', #{<<"thing">> := Thing}, _) when Thing =/= <<>> ->
     alinkiot_tdengine_sync:sync_add();
