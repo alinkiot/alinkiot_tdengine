@@ -184,7 +184,20 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
     Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
     case alinkdata:query_mysql_format_map(default, Sql) of
         {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
-            query_alink(Args#{<<"fields">> => jiffy:decode(Thing, [return_maps])});
+            ThingInfo = jiffy:decode(Thing, [return_maps]),
+            ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
+            Where =
+                maps:fold(
+                    fun(K, V, Acc) ->
+                        LegalFields = [<<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
+                        case lists:member(K, LegalFields) of
+                            true ->
+                                Acc#{K => V};
+                            _ ->
+                                Acc
+                        end
+                end, #{}, Args),
+            query_alink(Args#{<<"fields">> => ThingInfo, <<"where">> => Where});
         {ok, _} ->
             {error, <<"物模型出错"/utf8>>};
         {error, Reason} ->
@@ -196,12 +209,15 @@ query_alink(Param) ->
     Interval = parse_interval(Param),
     FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, [])),
     OrderBy = parse_order_by(Param),
+    ParseWhere = parse_where(Param),
     Sql =
         case Interval of
             <<>> ->
-                <<"select ", FieldsBin/binary, " from ", Table/binary, OrderBy/binary>>;
+                <<"select ", FieldsBin/binary, " from ", Table/binary,
+                    " where 1 = 1 ", ParseWhere/binary, OrderBy/binary>>;
             _ ->
-                <<"select ", FieldsBin/binary, " from ", Table/binary, Interval/binary, OrderBy/binary>>
+                <<"select ", FieldsBin/binary, " from ", Table/binary,
+                    " where 1 = 1 ", ParseWhere/binary, Interval/binary, OrderBy/binary>>
         end,
     case parse_page(Param) of
         <<>> ->
@@ -257,7 +273,19 @@ parse_order_by(#{<<"orderBy[asc]">> := Field}) ->
 parse_order_by(_) ->
     <<>>.
 
-
+parse_where(#{<<"where">> := Where}) ->
+    maps:fold(
+        fun(<<"time[begin]">>, V, Acc) ->
+            VB = alinkiot_tdengine_common:to_sql_bin(V),
+            <<Acc, " and time >= ", VB/binary>>;
+           (<<"time[end]">>, V, Acc) ->
+            VB = alinkiot_tdengine_common:to_sql_bin(V),
+            <<Acc, " and time < ", VB/binary>>;
+            (K, V, Acc) ->
+            KB = alinkutil_type:to_binary(K),
+            VB = alinkiot_tdengine_common:to_sql_bin(V),
+            <<Acc, " and ", KB/binary, " = ", VB/binary>>
+    end, <<>>, Where).
 
 
 %% 下面的代码有点乱七八糟，找机会整理 TODO
