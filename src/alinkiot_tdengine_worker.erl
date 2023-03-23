@@ -155,6 +155,7 @@ build_sub_sql(Msg) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
     AddrB = alinkiot_tdengine_common:to_sql_bin(Addr),
+    Time = maps:get(<<"ts">>, Msg, erlang:system_time(second)),
 
     {Sql0, Sql1} =
         maps:fold(
@@ -166,14 +167,9 @@ build_sub_sql(Msg) ->
                         #{<<"value">> := V} = RV,
                         KB = alinkutil_type:to_binary(K),
                         VB = alinkiot_tdengine_common:to_sql_bin(V),
-                        case Acc0 of
-                            <<>> ->
-                                {KB, VB};
-                            _ ->
-                                {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
-                        end
+                        {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
                 end
-            end, {<<>>, <<>>}, Msg),
+            end, {<<"time">>, alinkutil_type:to_binary(Time)}, Msg),
     Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
         AddrB/binary, ",", ProductIdB/binary, ") values (">>,
     <<" ", Table/binary, "(", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
