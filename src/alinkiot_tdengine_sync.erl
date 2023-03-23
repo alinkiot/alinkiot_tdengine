@@ -62,7 +62,8 @@ check_add(ProductId, ThingInfo) ->
     STable = <<"alinkiot_", ProductIdB/binary>>,
     case alinkiot_tdengine:request(<<"show stables">>) of
         {ok, _, ExistsSTables} ->
-            case lists:member(STable, maps:values(ExistsSTables)) of
+            ExistsSTablesList = lists:map(fun(#{<<"stable_name">> := T}) -> T end, ExistsSTables),
+            case lists:member(STable, ExistsSTablesList) of
                 true ->
                     ok;
                 false ->
