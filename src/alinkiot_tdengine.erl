@@ -200,7 +200,8 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
             Where =
                 maps:fold(
                     fun(K, V, Acc) ->
-                        LegalFields = [<<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
+                        LegalFields = [<<"createTime">>, <<"createTime[begin]">>, <<"createTime[end]">>,
+                                        <<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
                         case {lists:member(K, LegalFields), lists:member(K, ThingFields)} of
                             {true, true} ->
                                 TdF = alinkiot_tdengine_common:to_td_field_name(K),
@@ -217,23 +218,27 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                     {undefined, undefined} ->
                         Args#{<<"fields">> => ThingInfo, <<"where">> => Where};
                     {Desc, _} when Desc =/= undefined ->
-                        case lists:member(Desc, [<<"time">>, <<"addr">>]) of
-                            true ->
+                        case lists:member(Desc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
+                            false ->
                                 NDesc = alinkiot_tdengine_common:to_td_field_name(Desc),
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => NDesc};
-                            false ->
+                            true when Desc =:= <<"createTime">>->
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => <<"time">>};
+                            true ->
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
                         end;
                     {_, Asc} ->
-                        case lists:member(Asc, [<<"time">>, <<"addr">>]) of
-                            true ->
+                        case lists:member(Asc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
+                            false ->
                                 NAsc = alinkiot_tdengine_common:to_td_field_name(Asc),
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => NAsc};
-                            false ->
+                            true when Asc =:= <<"createTime">>->
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => <<"time">>};
+                            true ->
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
                         end
                 end,
-            query_alink(Args1);
+            query_alink(Args1#{<<"timeAs">> => <<"createTime">>});
         {ok, _} ->
             {error, <<"物模型出错"/utf8>>};
         {error, Reason} ->
@@ -243,7 +248,8 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
 query_alink(Param) ->
     Table = parse_table(Param),
     Interval = parse_interval(Param),
-    FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, [])),
+    TimeAs = maps:get(<<"timeAs">>, Param, <<"time">>),
+    FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, []), TimeAs),
     OrderBy = parse_order_by(Param),
     ParseWhere = parse_where(Param),
     Sql =
@@ -311,10 +317,12 @@ parse_order_by(_) ->
 
 parse_where(#{<<"where">> := Where}) ->
     maps:fold(
-        fun(<<"time[begin]">>, V, Acc) ->
+        fun(K, V, Acc) when K =:= <<"time[begin]">>
+                        orelse K =:= <<"createTime[begin]">>->
             VB = alinkiot_tdengine_common:to_sql_bin(V),
             <<Acc/binary, " and time >= ", VB/binary>>;
-           (<<"time[end]">>, V, Acc) ->
+           (K, V, Acc) when K =:= <<"time[end]">>
+                        orelse K =:= <<"createTime[end]">>->
             VB = alinkiot_tdengine_common:to_sql_bin(V),
             <<Acc/binary, " and time < ", VB/binary>>;
             (K, V, Acc) ->
@@ -604,16 +612,17 @@ create_table_tags_bin(Tags) ->
             end
     end, <<>>, Tags).
 
-to_fields_bin(<<>>, []) ->
+to_fields_bin(<<>>, [], <<>>) ->
     <<"*">>;
-to_fields_bin(<<>>, Fields) ->
+to_fields_bin(<<>>, Fields, TimeAs) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
+    TimeB = <<"time as ", TimeAs/binary>>,
     lists:foldl(
         fun(#{<<"name">> := F} = FInfo, Acc) ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ",", F/binary, " as ", Alias/binary>>
-    end, <<"time">>, Fields1);
-to_fields_bin(_, Fields) ->
+    end, TimeB, Fields1);
+to_fields_bin(_, Fields, TimeAs) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
         fun(#{<<"name">> := F,
@@ -622,4 +631,4 @@ to_fields_bin(_, Fields) ->
                                                 orelse Type =:= <<"float">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ", avg(", F/binary, ") as ", Alias/binary>>
-        end, <<"_wstart as time">>, Fields1).
+        end, <<"_wstart as ", TimeAs/binary>>, Fields1).
