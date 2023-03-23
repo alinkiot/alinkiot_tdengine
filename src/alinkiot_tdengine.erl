@@ -168,7 +168,7 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
 
 %% 查询，
 query_history(_OperationID, Args, _Context, Req) ->
-    case query_alink(Args) of
+    case do_query_history(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
             Res = maps:merge(#{total => Count, rows => Rows}, CommonSuccessRes),
@@ -180,6 +180,16 @@ query_history(_OperationID, Args, _Context, Req) ->
             alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
     end.
 
+do_query_history(#{<<"addr">> := Addr} = Args) ->
+    Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
+    case alinkdata:query_mysql_format_map(default, Sql) of
+        {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
+            query_alink(Args#{<<"fields">> => jiffy:decode(Thing, [return_maps])});
+        {ok, _} ->
+            {error, <<"物模型出错"/utf8>>};
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 query_alink(Param) ->
     Table = parse_table(Param),
@@ -203,7 +213,7 @@ query_alink(Param) ->
             end;
         Limit ->
             case request(<<"select count(1) from (", Sql/binary, ")">>) of
-                {ok, _, [#{<<"couint(1)">> := Count}]} ->
+                {ok, _, [#{<<"count(1)">> := Count}]} ->
                     case request(<<Sql/binary, Limit/binary>>) of
                         {ok, _, Rows} ->
                             {ok, Count, Rows};
@@ -531,14 +541,16 @@ create_table_tags_bin(Tags) ->
 to_fields_bin(<<>>, []) ->
     <<"*">>;
 to_fields_bin(<<>>, Fields) ->
-    Fields1 = lists:filter(fun(F) -> F =/= <<"time">> end, Fields),
+    Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
         fun(F, Acc) ->
             <<Acc/binary, ",", F/binary>>
     end, <<"time">>, Fields1);
 to_fields_bin(_, Fields) ->
-    Fields1 = lists:filter(fun(F) -> F =/= <<"time">> end, Fields),
+    Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
-        fun(F, Acc) ->
+        fun(#{<<"name">> := F,
+              <<"type">> := Type}, Acc) when Type =:= <<"int">>
+                                        orelse Type =:= <<"float">> ->
             <<Acc/binary, ", avg(", F/binary, ") as ", F/binary>>
         end, <<"_wstart as time">>, Fields1).
