@@ -52,7 +52,8 @@ show_database() ->
 
 create_database(DataBase, Keep) ->
     KeepTime = alinkutil_type:to_binary(Keep),
-    Sql = <<"CREATE DATABASE IF NOT EXISTS ", DataBase/binary, " KEEP ", KeepTime/binary>>,
+    DataBaseB = alinkutil_type:to_binary(DataBase),
+    Sql = <<"CREATE DATABASE IF NOT EXISTS ", DataBaseB/binary, " KEEP ", KeepTime/binary>>,
     request(Sql).
 
 get_schema(Table) ->
