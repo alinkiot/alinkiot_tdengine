@@ -159,7 +159,7 @@ build_sub_sql(Msg) ->
     {Sql0, Sql1} =
         maps:fold(
             fun(K, RV, {Acc0, Acc1}) ->
-                case lists:member(K, [<<"addr">>, <<"product_id">>, <<"ts">>]) of
+                case lists:member(K, [<<"addr">>, <<"product_id">>, <<"ts">>, <<"productId">>]) of
                     true ->
                         {Acc0, Acc1};
                     _ ->
