@@ -105,11 +105,16 @@ create_schema(#{<<"table">> := TableName, <<"fields">> := Fields} = Schema) ->
 create_alink_schema(ProductId, ThingInfo) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
-    FilterThingInfo =
+    FilterThingInfo0 =
         lists:filter(
             fun(#{<<"name">> := Name}) ->
                 Name =/= <<"time">>
         end, ThingInfo),
+    FilterThingInfo1 =
+        lists:map(
+            fun(#{<<"name">> := Name} = FInfo) ->
+                FInfo#{<<"name">> => alinkiot_tdengine_common:to_td_field_name(Name)}
+            end, FilterThingInfo0),
     Tags = [
         #{<<"name">> => <<"addr">>, <<"type">> => <<"string">>},
         #{<<"name">> => <<"product_id">>, <<"type">> => <<"int">>}
@@ -117,7 +122,7 @@ create_alink_schema(ProductId, ThingInfo) ->
     CreateSchemaParam =
         #{
             <<"stable">> => STable,
-            <<"fields">> => FilterThingInfo,
+            <<"fields">> => FilterThingInfo1,
             <<"tags">> => Tags
         },
     create_schema(CreateSchemaParam).
@@ -185,20 +190,50 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
     Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
     case alinkdata:query_mysql_format_map(default, Sql) of
         {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
-            ThingInfo = jiffy:decode(Thing, [return_maps]),
+            ThingInfo =
+                lists:map(
+                    fun(#{<<"name">> := F} = FInfo) ->
+                        TdF = alinkiot_tdengine_common:to_td_field_name(F),
+                        FInfo#{<<"name">> => TdF, <<"alias">> => F}
+                end, jiffy:decode(Thing, [return_maps])),
             ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
             Where =
                 maps:fold(
                     fun(K, V, Acc) ->
                         LegalFields = [<<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
-                        case lists:member(K, LegalFields) of
-                            true ->
+                        case {lists:member(K, LegalFields), lists:member(K, ThingFields)} of
+                            {true, true} ->
+                                TdF = alinkiot_tdengine_common:to_td_field_name(K),
+                                Acc#{TdF => V};
+                            {true, _} ->
                                 Acc#{K => V};
                             _ ->
                                 Acc
                         end
                 end, #{}, Args),
-            query_alink(Args#{<<"fields">> => ThingInfo, <<"where">> => Where});
+            Args1 =
+                case {maps:get(<<"orderBy[desc]">>, Args, undefined),
+                    maps:get(<<"orderBy[asc]">>, Args, undefined)} of
+                    {undefined, undefined} ->
+                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where};
+                    {Desc, _} when Desc =/= undefined ->
+                        case lists:member(Desc, [<<"time">>, <<"addr">>]) of
+                            true ->
+                                NDesc = alinkiot_tdengine_common:to_td_field_name(Desc),
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => NDesc};
+                            false ->
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
+                        end;
+                    {_, Asc} ->
+                        case lists:member(Asc, [<<"time">>, <<"addr">>]) of
+                            true ->
+                                NAsc = alinkiot_tdengine_common:to_td_field_name(Asc),
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => NAsc};
+                            false ->
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
+                        end
+                end,
+            query_alink(Args1);
         {ok, _} ->
             {error, <<"物模型出错"/utf8>>};
         {error, Reason} ->
@@ -574,15 +609,17 @@ to_fields_bin(<<>>, []) ->
 to_fields_bin(<<>>, Fields) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
-        fun(#{<<"name">> := F}, Acc) ->
-            <<Acc/binary, ",", F/binary>>
+        fun(#{<<"name">> := F} = FInfo, Acc) ->
+            Alias = maps:get(<<"as">>, FInfo, F),
+            <<Acc/binary, ",", F/binary, " as ", Alias/binary>>
     end, <<"time">>, Fields1);
 to_fields_bin(_, Fields) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
         fun(#{<<"name">> := F,
-              <<"type">> := Type}, Acc) when Type =:= <<"int">>
-                                        orelse Type =:= <<"integer">>
-                                        orelse Type =:= <<"float">> ->
-            <<Acc/binary, ", avg(", F/binary, ") as ", F/binary>>
+              <<"type">> := Type} = FInfo, Acc) when Type =:= <<"int">>
+                                                orelse Type =:= <<"integer">>
+                                                orelse Type =:= <<"float">> ->
+            Alias = maps:get(<<"as">>, FInfo, F),
+            <<Acc/binary, ", avg(", F/binary, ") as ", Alias/binary>>
         end, <<"_wstart as time">>, Fields1).

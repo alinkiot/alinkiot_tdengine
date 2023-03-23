@@ -114,11 +114,12 @@ diff_schema_and_thing(Schema, ThingInfo) ->
     AddColmns =
         lists:foldl(
             fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) when Name =/= <<"time">> ->
+                TdF = alinkiot_tdengine_common:to_td_field_name(Name),
                 IsExistInSchema =
                     lists:any(
                         fun(#{<<"field">> := Field,
                               <<"type">> := FieldType,
-                              <<"note">> := Note}) when Field =:= Name
+                              <<"note">> := Note}) when Field =:= TdF
                                                    andalso Note =/= <<"TAG">>->
                             case alinkiot_tdengine_common:transform_field_type(Type) of
                                 FieldType ->
@@ -133,17 +134,18 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                     true ->
                         Acc;
                     false ->
-                        [#{<<"name">> => Name, <<"type">> => Type}|Acc]
+                        [#{<<"name">> => TdF, <<"type">> => Type}|Acc]
                 end;
                (_, Acc) ->
                    Acc
         end, [], ThingInfo),
     DelColumns =
         lists:foldl(
-            fun(#{<<"field">> := Field,
+            fun(#{<<"field">> := TdF,
                   <<"type">> := FieldType,
-                  <<"note">> := Note}, Acc) when Field =/= <<"time">>
+                  <<"note">> := Note}, Acc) when TdF =/= <<"time">>
                                             andalso Note =/= <<"TAG">> ->
+                Field = alinkiot_tdengine_common:from_td_field_name(TdF),
                 IsExistInThing =
                     lists:any(
                         fun(#{<<"name">> := Name, <<"type">> := Type}) when Name =:= Field ->
@@ -160,7 +162,7 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                     true ->
                         Acc;
                     false ->
-                        [Field|Acc]
+                        [TdF|Acc]
                 end;
                 (_, Acc) ->
                     Acc

@@ -12,7 +12,9 @@
 %% API
 -export([
     to_sql_bin/1,
-    transform_field_type/1
+    transform_field_type/1,
+    to_td_field_name/1,
+    from_td_field_name/1
 ]).
 
 %%%===================================================================
@@ -36,6 +38,16 @@ transform_field_type(<<"string">>) ->
     <<"VARCHAR(100)">>;
 transform_field_type(Type) ->
     Type.
+
+
+to_td_field_name(F) ->
+    <<"alink_", F/binary>>.
+
+
+from_td_field_name(<<"alink_", F/binary>>) ->
+    F;
+from_td_field_name(F) ->
+    F.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
