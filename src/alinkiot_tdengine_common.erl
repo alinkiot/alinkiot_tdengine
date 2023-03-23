@@ -39,7 +39,8 @@ transform_field_type(<<"string">>) ->
 transform_field_type(Type) ->
     Type.
 
-
+to_td_field_name(<<"alink_", _/binary>> = F) ->
+    F;
 to_td_field_name(F) ->
     <<"alink_", F/binary>>.
 
