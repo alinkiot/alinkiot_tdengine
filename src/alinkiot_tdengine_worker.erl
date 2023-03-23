@@ -174,8 +174,9 @@ build_sub_sql(Msg) ->
                     _ ->
                         #{<<"value">> := V} = RV,
                         KB = alinkutil_type:to_binary(K),
+                        TdF = alinkiot_tdengine_common:to_td_field_name(KB),
                         VB = alinkiot_tdengine_common:to_sql_bin(V),
-                        {<<Acc0/binary, ",", KB/binary>>, <<Acc1/binary, ",", VB/binary>>}
+                        {<<Acc0/binary, ",", TdF/binary>>, <<Acc1/binary, ",", VB/binary>>}
                 end
             end, {<<"time">>, MilliTimeB}, Msg),
     Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
