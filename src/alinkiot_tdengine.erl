@@ -299,6 +299,9 @@ parse_table(#{<<"productId">> := ProductId}) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     <<"alinkiot_", ProductIdB/binary>>.
 
+
+parse_page(#{<<"type">> := <<"chart">>}) ->
+    <<>>;
 parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
     PageSize = alinkutil_type:to_integer(RPageSize),
     PageNum = alinkutil_type:to_integer(RPageNum),
@@ -309,9 +312,9 @@ parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
 parse_page(_Param) ->
     <<>>.
 
-parse_interval(#{<<"interval">> := Interval}) ->
-    IntervalB = alinkutil_type:to_binary(Interval),
-    <<" interval (", IntervalB/binary, ") ">>;
+parse_interval(#{<<"step">> := Step}) ->
+    StepB = alinkutil_type:to_binary(Step),
+    <<" interval (", StepB/binary, "s) ">>;
 parse_interval(_) ->
     <<>>.
 
