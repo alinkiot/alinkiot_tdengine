@@ -25,6 +25,7 @@ load() ->
     ehttpd_hook:add('POST_product', {?MODULE, sync_product}),
     alinkdata_hooks:add('data.publish', {?MODULE, data_publish, []}),
     ets:insert(alinkdata_dao_cache, {{route, get_table_history_list}, {alinkiot_tdengine, query_history}}),
+    ets:insert(alinkdata_dao_cache, {{route, post_export_history}, {alinkiot_tdengine, export_history}}),
     ok.
 
 
@@ -33,6 +34,7 @@ unload() ->
     ehttpd_hook:del('POST_product', {?MODULE, sync_product}),
     alinkdata_hooks:del('data.publish', {?MODULE, data_publish}),
     ets:delete(alinkdata_dao_cache, {route, get_table_history_list}),
+    ets:delete(alinkdata_dao_cache, {route, post_export_history}),
     ok.
 
 

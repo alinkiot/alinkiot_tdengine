@@ -22,6 +22,7 @@
     add_columns/2,
     add_column/2,
     query_history/4,
+    export_history/4,
     query_alink/1,
 
     insert_object/2,
@@ -185,6 +186,13 @@ query_history(_OperationID, Args, _Context, Req) ->
             Msg = list_to_binary(io_lib:format("~p", [Reason])),
             alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
     end.
+
+export_history(_OperationID, Args, _Context, _Req) ->
+    NArgs = lists:foldl(fun(K, Acc) -> maps:remove(K, Acc) end, Args, [<<"pageNum">>, <<"pageSize">>]),
+    {ok,Vs} = do_query_history(NArgs),
+    Content = alinkdata_common:to_file_content(Vs),
+    Headers = alinkdata_common:file_headers(Content, <<"\"history.csv\"">>),
+    {{200, Headers, Content}, NArgs}.
 
 do_query_history(#{<<"addr">> := Addr} = Args) ->
     Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
