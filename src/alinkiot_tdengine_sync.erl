@@ -115,7 +115,10 @@ diff_schema_and_thing(Schema, ThingInfo) ->
             fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) when Name =/= <<"time">> ->
                 IsExistInSchema =
                     lists:any(
-                        fun(#{<<"field">> := Field, <<"type">> := FieldType}) when Field =:= Name->
+                        fun(#{<<"field">> := Field,
+                              <<"type">> := FieldType,
+                              <<"note">> := Note}) when Field =:= Name
+                                                   andalso Note =/= <<"TAG">>->
                             case alinkiot_tdengine_common:transform_field_type(Type) of
                                 FieldType ->
                                     true;
@@ -136,7 +139,10 @@ diff_schema_and_thing(Schema, ThingInfo) ->
         end, [], ThingInfo),
     DelColumns =
         lists:foldl(
-            fun(#{<<"field">> := Field, <<"type">> := FieldType}, Acc) when Field =/= <<"time">> ->
+            fun(#{<<"field">> := Field,
+                  <<"type">> := FieldType,
+                  <<"note">> := Note}, Acc) when Field =/= <<"time">>
+                                            andalso Note =/= <<"TAG">> ->
                 IsExistInThing =
                     lists:any(
                         fun(#{<<"name">> := Name, <<"type">> := Type}) when Name =:= Field ->

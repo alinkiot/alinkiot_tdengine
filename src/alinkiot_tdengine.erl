@@ -11,7 +11,7 @@
 -include("alinkiot_tdengine.hrl").
 %% API
 -export([
-    init/0,
+    init_alink/0,
     show_database/0,
     get_schema/1,
     create_database/2,
@@ -21,6 +21,7 @@
     del_column/2,
     add_columns/2,
     add_column/2,
+    query_history/4,
     query_alink/1,
 
     insert_object/2,
@@ -35,7 +36,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-init() ->
+init_alink() ->
     case application:get_env(alinkiot_tdengine, database) of
         {ok, DB} ->
             create_database(DB, 3650);
@@ -166,26 +167,46 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     request(Sql).
 
 %% 查询，
+query_history(_OperationID, Args, _Context, Req) ->
+    case query_alink(Args) of
+        {ok, Count, Rows} ->
+            CommonSuccessRes = alinkdata_ajax_result:success_result(),
+            Res = maps:merge(#{total => Count, rows => Rows}, CommonSuccessRes),
+            alinkdata_common_service:response(Res, Req);
+        {ok, Rows} ->
+            alinkdata_common_service:response(alinkdata_ajax_result:success_result(Rows), Req);
+        {error, Reason} ->
+            Msg = list_to_binary(io_lib:format("~p", [Reason])),
+            alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
+    end.
+
+
 query_alink(Param) ->
     Table = parse_table(Param),
     Interval = parse_interval(Param),
     FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, [])),
+    OrderBy = parse_order_by(Param),
     Sql =
         case Interval of
             <<>> ->
-                <<"select ", FieldsBin/binary, " from ", Table/binary>>;
+                <<"select ", FieldsBin/binary, " from ", Table/binary, OrderBy/binary>>;
             _ ->
-                <<"select ", FieldsBin/binary, " from ", Table/binary, Interval/binary>>
+                <<"select ", FieldsBin/binary, " from ", Table/binary, Interval/binary, OrderBy/binary>>
         end,
     case parse_page(Param) of
         <<>> ->
-            request(Sql);
+            case request(Sql) of
+                {ok, _, Rows} ->
+                    {ok, Rows};
+                {error, Reason} ->
+                    {error, Reason}
+            end;
         Limit ->
             case request(<<"select count(1) from (", Sql/binary, ")">>) of
                 {ok, _, [#{<<"couint(1)">> := Count}]} ->
                     case request(<<Sql/binary, Limit/binary>>) of
                         {ok, _, Rows} ->
-                            {ok, {Count, Rows}};
+                            {ok, Count, Rows};
                         {error, Reason} ->
                             {error, Reason}
                     end;
@@ -208,7 +229,7 @@ parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
     Offset = PageSize * (PageNum - 1),
     PageSizeB = alinkutil_type:to_binary(PageSize),
     OffsetB = alinkutil_type:to_integer(Offset),
-    <<"LIMIT ", OffsetB/binary, ",", PageSizeB/binary>>;
+    <<" LIMIT ", OffsetB/binary, ",", PageSizeB/binary>>;
 parse_page(_Param) ->
     <<>>.
 
@@ -218,6 +239,13 @@ parse_interval(#{<<"interval">> := Interval}) ->
 parse_interval(_) ->
     <<>>.
 
+
+parse_order_by(#{<<"orderBy[desc]">> := Field}) ->
+    <<" order by ", Field/binary, " desc">>;
+parse_order_by(#{<<"orderBy[asc]">> := Field}) ->
+    <<" order by ", Field/binary, " asc">>;
+parse_order_by(_) ->
+    <<>>.
 
 
 
