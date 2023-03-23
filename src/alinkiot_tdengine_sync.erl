@@ -35,7 +35,7 @@ sync() ->
 sync(ProductId) ->
     case alinkdata_dao:query_no_count('QUERY_product', #{<<"id">> => ProductId}) of
         {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
-            repaire(ProductId, Thing);
+            repaire(ProductId, jiffy:decode(Thing, [return_maps]));
         {ok, _} ->
             ok;
         {error, Reason} ->
