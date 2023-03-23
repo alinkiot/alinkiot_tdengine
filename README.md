@@ -51,6 +51,8 @@ alinkiot_tdengine:create_schema(#{
         #{<<"name">> => <<"tagname4">>, <<"type">> => <<"time">>}
     ]
 }).
+%%查询表
+alinkiot_tdengine:query_alink(#{<<"addr">> => <<"000001">>, <<"where">> => #{<<"time[begin]">> => <<"2023-03-23 07:50:35">>}, <<"orderBy[asc]">> => <<"time">>, <<"fields">> => [#{<<"name">> => <<"temperature">>, <<"type">> => <<"integer">>}], <<"interval">> => <<"1s">>, <<"pageSize">> => 2, <<"pageNum">> => 2}).
 
 
 %% 插入设备

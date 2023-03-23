@@ -255,7 +255,7 @@ parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
     PageNum = alinkutil_type:to_integer(RPageNum),
     Offset = PageSize * (PageNum - 1),
     PageSizeB = alinkutil_type:to_binary(PageSize),
-    OffsetB = alinkutil_type:to_integer(Offset),
+    OffsetB = alinkutil_type:to_binary(Offset),
     <<" LIMIT ", OffsetB/binary, ",", PageSizeB/binary>>;
 parse_page(_Param) ->
     <<>>.
