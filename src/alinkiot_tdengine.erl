@@ -616,7 +616,7 @@ to_fields_bin(<<>>, [], <<>>) ->
     <<"*">>;
 to_fields_bin(<<>>, Fields, TimeAs) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
-    TimeB = <<"TIMEDIFF(_wstart, 0, 1s) as ", TimeAs/binary>>,
+    TimeB = <<"TIMEDIFF(time, 0, 1s) as ", TimeAs/binary>>,
     lists:foldl(
         fun(#{<<"name">> := F} = FInfo, Acc) ->
             Alias = maps:get(<<"as">>, FInfo, F),
