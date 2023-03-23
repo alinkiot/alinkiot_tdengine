@@ -28,6 +28,8 @@ transform_field_type(<<"time">>) ->
     <<"TIMESTAMP">>;
 transform_field_type(<<"int">>) ->
     <<"INT">>;
+transform_field_type(<<"integer">>) ->
+    <<"INT">>;
 transform_field_type(<<"float">>) ->
     <<"FLOAT">>;
 transform_field_type(<<"string">>) ->
