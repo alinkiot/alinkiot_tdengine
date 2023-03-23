@@ -194,7 +194,7 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                 lists:map(
                     fun(#{<<"name">> := F} = FInfo) ->
                         TdF = alinkiot_tdengine_common:to_td_field_name(F),
-                        FInfo#{<<"name">> => TdF, <<"alias">> => F}
+                        FInfo#{<<"name">> => TdF, <<"as">> => F}
                 end, jiffy:decode(Thing, [return_maps])),
             ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
             Where =
