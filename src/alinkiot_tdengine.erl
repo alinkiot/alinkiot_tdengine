@@ -187,7 +187,15 @@ query_history(_OperationID, Args, _Context, Req) ->
             alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
     end.
 
-export_history(_OperationID, Args, _Context, _Req) ->
+export_history(_OperationID, _Args, _Context, Req) ->
+    Args =
+        case cowboy_req:has_body(Req) of
+            true ->
+                {ok, B, _} = cowboy_req:read_body(Req),
+                maps:from_list(cow_qs:parse_qs(B));
+            false ->
+                #{}
+        end,
     NArgs = lists:foldl(fun(K, Acc) -> maps:remove(K, Acc) end, Args, [<<"pageNum">>, <<"pageSize">>]),
     {ok,Vs} = do_query_history(NArgs),
     Content = alinkdata_common:to_file_content(Vs),
