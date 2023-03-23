@@ -574,7 +574,7 @@ to_fields_bin(<<>>, []) ->
 to_fields_bin(<<>>, Fields) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
-        fun(F, Acc) ->
+        fun(#{<<"name">> := F}, Acc) ->
             <<Acc/binary, ",", F/binary>>
     end, <<"time">>, Fields1);
 to_fields_bin(_, Fields) ->
@@ -582,6 +582,7 @@ to_fields_bin(_, Fields) ->
     lists:foldl(
         fun(#{<<"name">> := F,
               <<"type">> := Type}, Acc) when Type =:= <<"int">>
+                                        orelse Type =:= <<"integer">>
                                         orelse Type =:= <<"float">> ->
             <<Acc/binary, ", avg(", F/binary, ") as ", F/binary>>
         end, <<"_wstart as time">>, Fields1).
