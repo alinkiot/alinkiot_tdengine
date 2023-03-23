@@ -238,8 +238,6 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                             false ->
                                 NDesc = alinkiot_tdengine_common:to_td_field_name(Desc),
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => NDesc};
-                            true when Desc =:= <<"createTime">>->
-                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => <<"time">>};
                             true ->
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
                         end;
@@ -248,8 +246,6 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                             false ->
                                 NAsc = alinkiot_tdengine_common:to_td_field_name(Asc),
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => NAsc};
-                            true when Asc =:= <<"createTime">>->
-                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => <<"time">>};
                             true ->
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
                         end
