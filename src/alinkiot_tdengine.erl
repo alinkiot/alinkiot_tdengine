@@ -616,7 +616,7 @@ to_fields_bin(<<>>, [], <<>>) ->
     <<"*">>;
 to_fields_bin(<<>>, Fields, TimeAs) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
-    TimeB = <<"time as ", TimeAs/binary>>,
+    TimeB = <<"cast(time as bigint) as ", TimeAs/binary>>,
     lists:foldl(
         fun(#{<<"name">> := F} = FInfo, Acc) ->
             Alias = maps:get(<<"as">>, FInfo, F),
@@ -631,4 +631,4 @@ to_fields_bin(_, Fields, TimeAs) ->
                                                 orelse Type =:= <<"float">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ", avg(", F/binary, ") as ", Alias/binary>>
-        end, <<"_wstart as ", TimeAs/binary>>, Fields1).
+        end, <<"cast(_wstart as bigint) as ", TimeAs/binary>>, Fields1).
