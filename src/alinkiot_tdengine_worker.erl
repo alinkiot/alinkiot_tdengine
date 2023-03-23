@@ -157,7 +157,7 @@ build_sub_sql(Msg) ->
     AddrB = alinkiot_tdengine_common:to_sql_bin(Addr),
 
     {Sql0, Sql1} =
-        lists:foldl(
+        maps:fold(
             fun(K, RV, {Acc0, Acc1}) ->
                 case lists:member(K, [<<"addr">>, <<"product_id">>, <<"ts">>]) of
                     true ->
