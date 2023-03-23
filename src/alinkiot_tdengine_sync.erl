@@ -148,7 +148,8 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                 Field = alinkiot_tdengine_common:from_td_field_name(TdF),
                 IsExistInThing =
                     lists:any(
-                        fun(#{<<"name">> := Name, <<"type">> := Type}) when Name =:= Field ->
+                        fun(#{<<"name">> := Name, <<"type">> := Type}) when Name =:= Field
+                                                                        andalso Field =/= TdF ->
                             case alinkiot_tdengine_common:transform_field_type(Type) of
                                 FieldType ->
                                     true;
