@@ -278,14 +278,14 @@ parse_where(#{<<"where">> := Where}) ->
     maps:fold(
         fun(<<"time[begin]">>, V, Acc) ->
             VB = alinkiot_tdengine_common:to_sql_bin(V),
-            <<Acc, " and time >= ", VB/binary>>;
+            <<Acc/binary, " and time >= ", VB/binary>>;
            (<<"time[end]">>, V, Acc) ->
             VB = alinkiot_tdengine_common:to_sql_bin(V),
-            <<Acc, " and time < ", VB/binary>>;
+            <<Acc/binary, " and time < ", VB/binary>>;
             (K, V, Acc) ->
             KB = alinkutil_type:to_binary(K),
             VB = alinkiot_tdengine_common:to_sql_bin(V),
-            <<Acc, " and ", KB/binary, " = ", VB/binary>>
+            <<Acc/binary, " and ", KB/binary, " = ", VB/binary>>
     end, <<>>, Where);
 parse_where(_) ->
     <<>>.
