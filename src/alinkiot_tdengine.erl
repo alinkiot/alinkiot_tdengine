@@ -253,17 +253,19 @@ query_alink(Param) ->
     Table = parse_table(Param),
     Interval = parse_interval(Param),
     TimeAs = maps:get(<<"timeAs">>, Param, <<"time">>),
-    FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, []), TimeAs),
+    Function = maps:get(<<"function">> , Param, <<>>),
+    FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, []), TimeAs, Function),
     OrderBy = parse_order_by(Param),
     ParseWhere = parse_where(Param),
+    GroupBy = parse_group_by(Param),
     Sql =
         case Interval of
             <<>> ->
                 <<"select ", FieldsBin/binary, " from ", Table/binary,
-                    " where 1 = 1 ", ParseWhere/binary, OrderBy/binary>>;
+                    " where 1 = 1 ", ParseWhere/binary, GroupBy/binary, OrderBy/binary>>;
             _ ->
                 <<"select ", FieldsBin/binary, " from ", Table/binary,
-                    " where 1 = 1 ", ParseWhere/binary, Interval/binary, OrderBy/binary>>
+                    " where 1 = 1 ", ParseWhere/binary, GroupBy/binary, Interval/binary, OrderBy/binary>>
         end,
     case parse_page(Param) of
         <<>> ->
@@ -340,6 +342,10 @@ parse_where(#{<<"where">> := Where}) ->
 parse_where(_) ->
     <<>>.
 
+parse_group_by(#{<<"groupBy">> := GroupBy}) ->
+    <<" group by ", GroupBy/binary>>;
+parse_group_by(_) ->
+    <<>>.
 
 %% 下面的代码有点乱七八糟，找机会整理 TODO
 
@@ -619,17 +625,22 @@ create_table_tags_bin(Tags) ->
             end
     end, <<>>, Tags).
 
-to_fields_bin(<<>>, [], <<>>) ->
+to_fields_bin(<<>>, [], <<>>, _Function) ->
     <<"*">>;
-to_fields_bin(<<>>, Fields, TimeAs) ->
+to_fields_bin(<<>>, Fields, TimeAs, Function) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     TimeB = <<"TIMEDIFF(time, 0, 1s) as ", TimeAs/binary>>,
     lists:foldl(
         fun(#{<<"name">> := F} = FInfo, Acc) ->
             Alias = maps:get(<<"as">>, FInfo, F),
-            <<Acc/binary, ",", F/binary, " as ", Alias/binary>>
+            case Function of
+                <<>> ->
+                    <<Acc/binary, ",", F/binary, " as ", Alias/binary>>;
+                _ ->
+                    <<Acc/binary, ",", Function/binary, "(" ,F/binary, ") as ", Alias/binary>>
+            end
     end, TimeB, Fields1);
-to_fields_bin(_, Fields, TimeAs) ->
+to_fields_bin(_, Fields, TimeAs, _Function) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
         fun(#{<<"name">> := F,
