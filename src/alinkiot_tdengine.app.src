@@ -9,7 +9,8 @@
     hackney,
     ecpool,
     alinkutil,
-    jiffy
+    jiffy,
+    cowboy
    ]},
   {env,[]},
   {modules, []},
