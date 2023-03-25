@@ -192,7 +192,7 @@ export_history(_OperationID, Args, _Context, _Req) ->
     {ok,Vs} = do_query_history(NArgs),
     Content = alinkdata_common:to_file_content(Vs),
     Headers = alinkdata_common:file_headers(Content, <<"\"history.csv\"">>),
-    {{200, Headers, Content}, NArgs}.
+    {200, Headers, Content}.
 
 do_query_history(#{<<"addr">> := Addr} = Args) ->
     Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
@@ -244,7 +244,8 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                 end,
             query_alink(Args1#{<<"timeAs">> => <<"createTime">>});
         {ok, _} ->
-            {error, <<"物模型出错"/utf8>>};
+            logger:error("add ~p thing error", [Addr]),
+            {error, thing_error};
         {error, Reason} ->
             {error, Reason}
     end.
