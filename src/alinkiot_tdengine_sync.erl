@@ -16,6 +16,8 @@
     sync_add/0
 ]).
 
+-define(IS_EMPTY(V), V == <<>> orelse V == null orelse V == undefined).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -23,7 +25,7 @@ sync() ->
     case alinkdata_dao:query_no_count('QUERY_product', #{}) of
         {ok, Products} ->
             lists:foreach(
-                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when Thing =/= <<>> ->
+                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when not ?IS_EMPTY(Thing) ->
                     repaire(ProductId, jiffy:decode(Thing, [return_maps]));
                    (_) ->
                     ok

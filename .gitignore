@@ -16,3 +16,4 @@ rebar.lock
 _build/
 _checkouts/
 */.DS_Store
+*.iml
