@@ -25,7 +25,7 @@ sync() ->
     case alinkdata_dao:query_no_count('QUERY_product', #{}) of
         {ok, Products} ->
             lists:foreach(
-                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when not ?IS_EMPTY(Thing) ->
+                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when not (?IS_EMPTY(Thing)) ->
                     repaire(ProductId, jiffy:decode(Thing, [return_maps]));
                    (_) ->
                     ok
@@ -36,7 +36,7 @@ sync() ->
 
 sync(ProductId) ->
     case alinkdata_dao:query_no_count('QUERY_product', #{<<"id">> => ProductId}) of
-        {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
+        {ok, [#{<<"thing">> := Thing}]} when not (?IS_EMPTY(Thing)) ->
             repaire(ProductId, jiffy:decode(Thing, [return_maps]));
         {ok, _} ->
             ok;
@@ -48,7 +48,7 @@ sync_add() ->
     case alinkdata_dao:query_no_count('QUERY_product', #{}) of
         {ok, Products} ->
             lists:foreach(
-                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when Thing =/= <<>> ->
+                fun(#{<<"id">> := ProductId, <<"thing">> := Thing}) when not (?IS_EMPTY(Thing))  ->
                     check_add(ProductId, jiffy:decode(Thing, [return_maps]));
                     (_) ->
                         ok
