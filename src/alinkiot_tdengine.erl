@@ -280,6 +280,8 @@ query_alink(Param) ->
             end;
         Limit ->
             case request(<<"select count(1) from (", Sql/binary, ")">>) of
+                {ok, 0, _} ->
+                    {ok, 0, []};
                 {ok, _, [#{<<"count(1)">> := Count}]} ->
                     case request(<<Sql/binary, Limit/binary>>) of
                         {ok, _, Rows} ->
