@@ -48,7 +48,7 @@ sync_product(_, _, _) ->
 
 data_publish(ProductId, Addr, Data) ->
     case alinkcore_cache:query_product(ProductId) of
-        {ok, #{<<"thingg">> := Thing}} ->
+        {ok, #{<<"thing">> := Thing}} ->
             case lists:member(Thing, [undefined, null, <<>>]) of
                 true ->
                     ok;
