@@ -47,7 +47,29 @@ sync_product(_, _, _) ->
 
 
 data_publish(ProductId, Addr, Data) ->
-    alinkiot_tdengine_worker:insert(Data#{<<"addr">> => Addr, <<"productId">> => ProductId}).
+    case alinkcore_cache:query_product(ProductId) of
+        {ok, #{<<"thingg">> := Thing}} ->
+            case lists:member(Thing, [undefined, null, <<>>]) of
+                true ->
+                    ok;
+                false ->
+                    ThingMap = jiffy:decode(Thing, [return_maps]),
+                    ThingNames = lists:map(fun(#{<<"name">> := Name}) -> Name end, ThingMap),
+                    NData =
+                        maps:fold(
+                            fun(K, V, Acc) ->
+                                case lists:member(K, ThingNames) of
+                                    true ->
+                                        Acc#{K => V};
+                                    false ->
+                                        Acc
+                                end
+                        end, #{}, Data),
+                    alinkiot_tdengine_worker:insert(NData#{<<"addr">> => Addr, <<"productId">> => ProductId})
+            end;
+        {error, Reason} ->
+            logger:error("get product thing error ~p", [Reason])
+    end.
 %%%===================================================================
 %%% Application callbacks
 %%%===================================================================
