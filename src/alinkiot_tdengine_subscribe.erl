@@ -49,12 +49,11 @@ sync_product(_, _, _) ->
 data_publish(ProductId, Addr, Data) ->
     case alinkcore_cache:query_product(ProductId) of
         {ok, #{<<"thing">> := Thing}} ->
-            case lists:member(Thing, [undefined, null, <<>>]) of
+            case lists:member(Thing, [undefined, null, <<>>, []]) of
                 true ->
                     ok;
                 false ->
-                    ThingMap = jiffy:decode(Thing, [return_maps]),
-                    ThingNames = lists:map(fun(#{<<"name">> := Name}) -> Name end, ThingMap),
+                    ThingNames = lists:map(fun(#{<<"name">> := Name}) -> Name end, Thing),
                     NData =
                         maps:fold(
                             fun(K, V, Acc) ->
