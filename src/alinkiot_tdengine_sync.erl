@@ -75,6 +75,16 @@ check_add(ProductId, ThingInfo) ->
             {error, Reason}
     end.
 
+
+repaire(ProductId, []) ->
+    ProductIdB = alinkutil_type:to_binary(ProductId),
+    STable = <<"alinkiot_", ProductIdB/binary>>,
+    case alinkiot_tdengine:drop_stable(STable) of
+        {ok, _, _} ->
+            ok;
+        {error, Reason} ->
+            logger:error("drop stable ~p failed ~p", [STable, Reason])
+    end;
 repaire(ProductId, ThingInfo) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,

@@ -21,6 +21,7 @@
     del_column/2,
     add_columns/2,
     add_column/2,
+    drop_stable/1,
     query_history/4,
     export_history/4,
     query_alink/1,
@@ -161,6 +162,11 @@ del_columns(Table, Columns) ->
 
 del_column(Table, Column) ->
     Sql = <<"alter table ", Table/binary, " drop column ", Column/binary>>,
+    request(Sql).
+
+
+drop_stable(Table) ->
+    Sql = <<"drop stable ", Table/binary>>,
     request(Sql).
 
 
