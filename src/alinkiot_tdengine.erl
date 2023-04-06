@@ -210,7 +210,7 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                 lists:map(
                     fun(#{<<"name">> := F} = FInfo) ->
                         TdF = alinkiot_tdengine_common:to_td_field_name(F),
-                        FInfo#{<<"name">> => TdF, <<"as">> => F}
+                        FInfo#{<<"name">> => TdF, <<"as">> => TdF}
                 end, jiffy:decode(Thing, [return_maps])),
             ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
             Where =
@@ -251,10 +251,12 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                         end
                 end,
             case query_alink(Args1#{<<"timeAs">> => <<"createTime">>}) of
-                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
-                    {ok, 0, []};
-                Ret ->
-                    Ret
+                {ok, Count, Rows} ->
+                    {ok, Count, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
+                {ok, Rows} ->
+                    {ok, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
+                {error, Reason} ->
+                    {error, Reason}
             end;
         {ok, _} ->
             logger:error("add ~p thing error", [Addr]),
@@ -286,6 +288,8 @@ query_alink(Param) ->
             case request(Sql) of
                 {ok, _, Rows} ->
                     {ok, Rows};
+                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
+                    {ok, []};
                 {error, Reason} ->
                     {error, Reason}
             end;
@@ -300,6 +304,8 @@ query_alink(Param) ->
                         {error, Reason} ->
                             {error, Reason}
                     end;
+                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
+                    {ok, 0, []};
                 {error, Reason} ->
                     {error, Reason}
             end

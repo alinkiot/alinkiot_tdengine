@@ -14,7 +14,8 @@
     to_sql_bin/1,
     transform_field_type/1,
     to_td_field_name/1,
-    from_td_field_name/1
+    from_td_field_name/1,
+    rows_from_td_field_name/1
 ]).
 
 %%%===================================================================
@@ -49,6 +50,18 @@ from_td_field_name(<<"alink_", F/binary>>) ->
     F;
 from_td_field_name(F) ->
     F.
+
+
+rows_from_td_field_name(Rows) ->
+    lists:map(fun row_from_td_field_name/1, Rows).
+
+
+row_from_td_field_name(Row) ->
+    maps:fold(
+        fun(K, V, Acc) ->
+            NK = from_td_field_name(K),
+            Acc#{NK => V}
+    end, #{}, Row).
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
