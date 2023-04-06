@@ -59,7 +59,8 @@ sync_add() ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-check_add(ProductId, ThingInfo) ->
+check_add(ProductId, RThingInfo) ->
+    ThingInfo = lowercase_thing(RThingInfo),
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
     case alinkiot_tdengine:request(<<"show stables">>) of
@@ -85,7 +86,8 @@ repaire(ProductId, []) ->
         {error, Reason} ->
             logger:error("drop stable ~p failed ~p", [STable, Reason])
     end;
-repaire(ProductId, ThingInfo) ->
+repaire(ProductId, RThingInfo) ->
+    ThingInfo = lowercase_thing(RThingInfo),
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
     case get_stable_schema(STable) of
@@ -181,3 +183,11 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                     Acc
             end, [], Schema),
     {AddColmns, DelColumns}.
+
+
+lowercase_thing(RThingInfo) ->
+    lists:map(
+        fun(#{<<"name">> := Name} = Thing) ->
+            NName = list_to_binary(string:to_lower(binary_to_list(Name))),
+            Thing#{<<"name">> => NName}
+    end, RThingInfo).
