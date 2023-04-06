@@ -250,7 +250,12 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                                 Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
                         end
                 end,
-            query_alink(Args1#{<<"timeAs">> => <<"createTime">>});
+            case query_alink(Args1#{<<"timeAs">> => <<"createTime">>}) of
+                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>} ->
+                    {ok, 0, []};
+                Ret ->
+                    Ret
+            end;
         {ok, _} ->
             logger:error("add ~p thing error", [Addr]),
             {error, thing_error};
