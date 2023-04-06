@@ -251,7 +251,7 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
                         end
                 end,
             case query_alink(Args1#{<<"timeAs">> => <<"createTime">>}) of
-                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>} ->
+                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
                     {ok, 0, []};
                 Ret ->
                     Ret
