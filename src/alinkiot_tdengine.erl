@@ -23,6 +23,7 @@
     add_column/2,
     drop_stable/1,
     query_history/4,
+    get_device_last_row/4,
     export_history/4,
     query_alink/1,
 
@@ -201,6 +202,22 @@ export_history(_OperationID, _Args, _Context, #{has_body := true} = Req) ->
     Content = alinkdata_common:to_file_content(Vs),
     Headers = alinkdata_common:file_headers(Content, <<"\"history.csv\"">>),
     {200, Headers, Content}.
+
+
+get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
+    Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
+    Res =
+        case do_query_history(Args) of
+            {ok, 0, []} ->
+                alinkdata_ajax_result:success_result(#{});
+            {ok, _, [Row|_]} ->
+                alinkdata_ajax_result:success_result(Row);
+            {error, Reason} ->
+                logger:error("query device last row failed", [Reason]),
+                alinkdata_ajax_result:error_result(<<"Internal Error">>, Req)
+        end,
+    alinkdata_common_service:response(Res, Req).
+
 
 do_query_history(#{<<"addr">> := Addr} = Args) ->
     Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
@@ -649,19 +666,22 @@ create_table_tags_bin(Tags) ->
 
 to_fields_bin(<<>>, [], <<>>, _Function) ->
     <<"*">>;
-to_fields_bin(<<>>, Fields, TimeAs, Function) ->
+to_fields_bin(<<>>, Fields, TimeAs, <<>>) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     TimeB = <<"TIMEDIFF(time, 0, 1s) as ", TimeAs/binary>>,
     lists:foldl(
         fun(#{<<"name">> := F} = FInfo, Acc) ->
             Alias = maps:get(<<"as">>, FInfo, F),
-            case Function of
-                <<>> ->
-                    <<Acc/binary, ",", F/binary, " as ", Alias/binary>>;
-                _ ->
-                    <<Acc/binary, ",", Function/binary, "(" ,F/binary, ") as ", Alias/binary>>
-            end
+            <<Acc/binary, ",", F/binary, " as ", Alias/binary>>
     end, TimeB, Fields1);
+to_fields_bin(<<>>, Fields, TimeAs, Function) ->
+    Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
+    TimeB = <<"TIMEDIFF(", Function, "(time), 0, 1s) as ", TimeAs/binary>>,
+    lists:foldl(
+        fun(#{<<"name">> := F} = FInfo, Acc) ->
+            Alias = maps:get(<<"as">>, FInfo, F),
+            <<Acc/binary, ",", Function/binary, "(" ,F/binary, ") as ", Alias/binary>>
+        end, TimeB, Fields1);
 to_fields_bin(_, Fields, TimeAs, _Function) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
