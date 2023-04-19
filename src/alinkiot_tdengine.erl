@@ -208,9 +208,9 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
     Res =
         case do_query_history(Args) of
-            {ok, 0, []} ->
+            {ok, []} ->
                 alinkdata_ajax_result:success_result(#{});
-            {ok, _, [Row|_]} ->
+            {ok, [Row|_]} ->
                 alinkdata_ajax_result:success_result(Row);
             {error, Reason} ->
                 logger:error("query device last row failed", [Reason]),
