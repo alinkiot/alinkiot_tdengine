@@ -330,7 +330,7 @@ query_alink(Param) ->
 
 
 parse_table(#{<<"addr">> := Addr}) ->
-    AddrB = alinkutil_type:to_binary(Addr),
+    AddrB = binary:replace(alinkutil_type:to_binary(Addr), <<"-">>, <<"_">>, [global]),
     <<"device_", AddrB/binary>>;
 parse_table(#{<<"productId">> := ProductId}) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
