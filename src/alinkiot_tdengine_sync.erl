@@ -91,10 +91,20 @@ repaire(ProductId, RThingInfo) ->
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
     case get_stable_schema(STable) of
-        {ok, Schema} ->
+        {ok, Schema, ValueFieldsCount} when ValueFieldsCount > 1 ->
             {AddColumns, DelColumns} = diff_schema_and_thing(Schema, ThingInfo),
             alinkiot_tdengine:del_columns(STable, DelColumns),
             alinkiot_tdengine:add_columns(STable, AddColumns);
+        {ok, Schema, _ValueFieldsCount} ->
+            {AddColumns, DelColumns} = diff_schema_and_thing(Schema, ThingInfo),
+            case length(DelColumns) > 0 of
+                true ->
+                    alinkiot_tdengine:drop_stable(STable),
+                    alinkiot_tdengine:create_alink_schema(ProductId, ThingInfo);
+                false ->
+                    alinkiot_tdengine:del_columns(STable, DelColumns),
+                    alinkiot_tdengine:add_columns(STable, AddColumns)
+            end;
         {error, not_found} ->
             alinkiot_tdengine:create_alink_schema(ProductId, ThingInfo);
         {error, Reason} ->
@@ -111,7 +121,12 @@ get_stable_schema(STable) ->
                 true ->
                     case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
                         {ok, _, Schema} ->
-                            {ok, Schema};
+                            ValueFieldsCount =
+                                lists:filter(
+                                    fun(#{<<"field">> := Name, <<"note">> := Note}) ->
+                                        Name =/= <<"time">> andalso Note =/= <<"TAG">>
+                                end, Schema),
+                            {ok, Schema, ValueFieldsCount};
                         {error, Reason} ->
                             {error, Reason}
                     end;
