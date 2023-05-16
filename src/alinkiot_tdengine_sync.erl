@@ -122,10 +122,10 @@ get_stable_schema(STable) ->
                     case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
                         {ok, _, Schema} ->
                             ValueFieldsCount =
-                                lists:filter(
+                                length(lists:filter(
                                     fun(#{<<"field">> := Name, <<"note">> := Note}) ->
                                         Name =/= <<"time">> andalso Note =/= <<"TAG">>
-                                end, Schema),
+                                end, Schema)),
                             {ok, Schema, ValueFieldsCount};
                         {error, Reason} ->
                             {error, Reason}
