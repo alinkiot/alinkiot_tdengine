@@ -15,7 +15,8 @@
     transform_field_type/1,
     to_td_field_name/1,
     from_td_field_name/1,
-    rows_from_td_field_name/1
+    rows_from_td_field_name/1,
+    thing_field_precision_type/1
 ]).
 
 %%%===================================================================
@@ -26,6 +27,25 @@ to_sql_bin(V) when is_binary(V)->
 to_sql_bin(V) ->
     alinkutil_type:to_binary(V).
 
+
+
+
+thing_field_precision_type(#{<<"type">> := Type} = Thing) when Type =:= <<"int">>
+                                            orelse Type =:= <<"integer">> ->
+    Check =
+        {
+            maps:get(<<"precision">>, Thing, 0),
+            maps:get(<<"offset">>, Thing, 0),
+            maps:get(<<"formula">>, Thing, undefined)
+        },
+    case Check of
+        {0, 0, undefined} ->
+            Type;
+        _ ->
+            <<"float">>
+    end;
+thing_field_precision_type(#{<<"type">> := Type}) ->
+    Type.
 
 transform_field_type(<<"time">>) ->
     <<"TIMESTAMP">>;

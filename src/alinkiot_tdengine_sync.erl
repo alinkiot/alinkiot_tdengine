@@ -129,13 +129,14 @@ diff_schema_and_thing(Schema, ThingInfo) ->
         lists:foldl(
             fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) when Name =/= <<"time">> ->
                 TdF = alinkiot_tdengine_common:to_td_field_name(Name),
+                ThingType = alinkiot_tdengine_common:thing_field_precision_type(Type),
                 IsExistInSchema =
                     lists:any(
                         fun(#{<<"field">> := Field,
                               <<"type">> := FieldType,
                               <<"note">> := Note}) when Field =:= TdF
                                                    andalso Note =/= <<"TAG">>->
-                            case alinkiot_tdengine_common:transform_field_type(Type) of
+                            case alinkiot_tdengine_common:transform_field_type(ThingType) of
                                 FieldType ->
                                     true;
                                 _ ->
@@ -148,7 +149,7 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                     true ->
                         Acc;
                     false ->
-                        [#{<<"name">> => TdF, <<"type">> => Type}|Acc]
+                        [#{<<"name">> => TdF, <<"type">> => ThingType}|Acc]
                 end;
                (_, Acc) ->
                    Acc
@@ -164,7 +165,8 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                     lists:any(
                         fun(#{<<"name">> := Name, <<"type">> := Type}) when Name =:= Field
                                                                         andalso Field =/= TdF ->
-                            case alinkiot_tdengine_common:transform_field_type(Type) of
+                            ThingType = alinkiot_tdengine_common:thing_field_precision_type(Type),
+                            case alinkiot_tdengine_common:transform_field_type(ThingType) of
                                 FieldType ->
                                     true;
                                 _ ->

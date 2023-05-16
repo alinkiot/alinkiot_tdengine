@@ -647,7 +647,8 @@ create_subtable_fields_bin(Fields) ->
 create_table_fields_bin(Fields) ->
     lists:foldl(
         fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) ->
-            RealType = alinkiot_tdengine_common:transform_field_type(Type),
+            ThingType = alinkiot_tdengine_common:thing_field_precision_type(Type),
+            RealType = alinkiot_tdengine_common:transform_field_type(ThingType),
             <<Acc/binary, ",", Name/binary, " ", RealType/binary>>
         end, <<>>, Fields).
 
