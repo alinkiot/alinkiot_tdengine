@@ -127,9 +127,9 @@ get_stable_schema(STable) ->
 diff_schema_and_thing(Schema, ThingInfo) ->
     AddColmns =
         lists:foldl(
-            fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) when Name =/= <<"time">> ->
+            fun(#{<<"name">> := Name, <<"type">> := _Type} = Thing, Acc) when Name =/= <<"time">> ->
                 TdF = alinkiot_tdengine_common:to_td_field_name(Name),
-                ThingType = alinkiot_tdengine_common:thing_field_precision_type(Type),
+                ThingType = alinkiot_tdengine_common:thing_field_precision_type(Thing),
                 IsExistInSchema =
                     lists:any(
                         fun(#{<<"field">> := Field,
@@ -163,9 +163,9 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                 Field = alinkiot_tdengine_common:from_td_field_name(TdF),
                 IsExistInThing =
                     lists:any(
-                        fun(#{<<"name">> := Name, <<"type">> := Type}) when Name =:= Field
+                        fun(#{<<"name">> := Name, <<"type">> := _Type} = Thing) when Name =:= Field
                                                                         andalso Field =/= TdF ->
-                            ThingType = alinkiot_tdengine_common:thing_field_precision_type(Type),
+                            ThingType = alinkiot_tdengine_common:thing_field_precision_type(Thing),
                             case alinkiot_tdengine_common:transform_field_type(ThingType) of
                                 FieldType ->
                                     true;
