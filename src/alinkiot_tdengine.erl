@@ -116,7 +116,10 @@ create_alink_schema(ProductId, ThingInfo) ->
     FilterThingInfo1 =
         lists:map(
             fun(#{<<"name">> := Name} = FInfo) ->
-                FInfo#{<<"name">> => alinkiot_tdengine_common:to_td_field_name(Name)}
+                FInfo#{
+                    <<"name">> => alinkiot_tdengine_common:to_td_field_name(Name),
+                    <<"type">> => alinkiot_tdengine_common:thing_field_precision_type(FInfo)
+                }
             end, FilterThingInfo0),
     Tags = [
         #{<<"name">> => <<"addr">>, <<"type">> => <<"string">>},
@@ -647,8 +650,7 @@ create_subtable_fields_bin(Fields) ->
 create_table_fields_bin(Fields) ->
     lists:foldl(
         fun(#{<<"name">> := Name, <<"type">> := Type}, Acc) ->
-            ThingType = alinkiot_tdengine_common:thing_field_precision_type(Type),
-            RealType = alinkiot_tdengine_common:transform_field_type(ThingType),
+            RealType = alinkiot_tdengine_common:transform_field_type(Type),
             <<Acc/binary, ",", Name/binary, " ", RealType/binary>>
         end, <<>>, Fields).
 
