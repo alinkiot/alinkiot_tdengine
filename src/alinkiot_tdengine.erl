@@ -225,7 +225,8 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
 do_query_history(#{<<"addr">> := Addr} = Args) ->
     Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
     case alinkdata:query_mysql_format_map(default, Sql) of
-        {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>> ->
+        {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>>
+                                        andalso is_binary(Thing)->
             ThingInfo =
                 lists:map(
                     fun(#{<<"name">> := F} = FInfo) ->
@@ -280,7 +281,7 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
             end;
         {ok, _} ->
             logger:error("add ~p thing error", [Addr]),
-            {error, thing_error};
+            {ok, []};
         {error, Reason} ->
             {error, Reason}
     end.
