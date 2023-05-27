@@ -65,7 +65,10 @@ check_add(ProductId, RThingInfo) ->
     STable = <<"alinkiot_", ProductIdB/binary>>,
     case alinkiot_tdengine:request(<<"show stables">>) of
         {ok, _, ExistsSTables} ->
-            ExistsSTablesList = lists:map(fun(#{<<"stable_name">> := T}) -> T end, ExistsSTables),
+            ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            ExistsSTablesList =
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                    (_) -> true end, ExistsSTablesList0),
             case lists:member(STable, ExistsSTablesList) of
                 true ->
                     ok;
@@ -116,7 +119,10 @@ repaire(ProductId, RThingInfo) ->
 get_stable_schema(STable) ->
     case alinkiot_tdengine:request(<<"show stables">>) of
         {ok, _, ExistsSTables} ->
-            ExistsSTablesList = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            ExistsSTablesList =
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                    (_) -> true end, ExistsSTablesList0),
             case lists:member(STable, ExistsSTablesList) of
                 true ->
                     case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
