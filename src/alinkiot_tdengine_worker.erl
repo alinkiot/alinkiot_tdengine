@@ -151,7 +151,7 @@ build_sub_sql(Msg) ->
         <<"addr">> := Addr,
         <<"productId">> := ProductId
     } = Msg,
-    Table = <<"device_", Addr/binary>>,
+    Table = binary:replace(<<"device_", Addr/binary>>, <<"-">>, <<"_">>, [global]),
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
     AddrB = alinkiot_tdengine_common:to_sql_bin(Addr),
