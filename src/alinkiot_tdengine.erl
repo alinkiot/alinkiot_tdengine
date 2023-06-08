@@ -207,6 +207,19 @@ export_history(_OperationID, _Args, _Context, #{has_body := true} = Req) ->
     {200, Headers, Content}.
 
 
+get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"true">>}, _Context, Req) ->
+    Addrs =
+        lists:filter(
+            fun(A) -> A =/= <<>>
+        end, binary:split(AddrsBin, <<",">>, [global])),
+    AddrRows =
+        lists:map(
+            fun(Addr) ->
+                Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
+                #{Addr => do_get_device_last_row(Args)}
+        end, Addrs),
+    Res = alinkdata_ajax_result:success_result(AddrRows),
+    alinkdata_common_service:response(Res, Req);
 get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
     Res =
@@ -216,75 +229,92 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
             {ok, [Row|_]} ->
                 alinkdata_ajax_result:success_result(Row);
             {error, Reason} ->
-                logger:error("query device last row failed", [Reason]),
+                logger:error("query device ~p last row failed", [Addr, Reason]),
                 alinkdata_ajax_result:error_result(<<"Internal Error">>, Req)
         end,
     alinkdata_common_service:response(Res, Req).
 
+do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
+    case do_query_history(Args) of
+        {ok, []} ->
+            #{};
+        {ok, [Row|_]} ->
+            Row;
+        {error, Reason} ->
+            logger:error("query device ~p last row failed", [Addr, Reason]),
+            #{}
+    end.
+
+
 
 do_query_history(#{<<"addr">> := Addr} = Args) ->
-    Sql = <<"select thing from sys_product a, sys_device b where a.id = b.product and b.addr = '", Addr/binary, "'">>,
-    case alinkdata:query_mysql_format_map(default, Sql) of
-        {ok, [#{<<"thing">> := Thing}]} when Thing =/= <<>>
-                                        andalso is_binary(Thing)->
-            ThingInfo =
-                lists:map(
-                    fun(#{<<"name">> := F} = FInfo) ->
-                        TdF = alinkiot_tdengine_common:to_td_field_name(F),
-                        FInfo#{<<"name">> => TdF, <<"as">> => TdF}
-                end, jiffy:decode(Thing, [return_maps])),
-            ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
-            Where =
-                maps:fold(
-                    fun(K, V, Acc) ->
-                        LegalFields = [<<"createTime">>, <<"createTime[begin]">>, <<"createTime[end]">>,
-                                        <<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
-                        case {lists:member(K, LegalFields), lists:member(K, ThingFields)} of
-                            {true, true} ->
-                                TdF = alinkiot_tdengine_common:to_td_field_name(K),
-                                Acc#{TdF => V};
-                            {true, _} ->
-                                Acc#{K => V};
-                            _ ->
-                                Acc
-                        end
-                end, #{}, Args),
-            Args1 =
-                case {maps:get(<<"orderBy[desc]">>, Args, undefined),
-                    maps:get(<<"orderBy[asc]">>, Args, undefined)} of
-                    {undefined, undefined} ->
-                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where};
-                    {Desc, _} when Desc =/= undefined ->
-                        case lists:member(Desc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
-                            false ->
-                                NDesc = alinkiot_tdengine_common:to_td_field_name(Desc),
-                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => NDesc};
-                            true ->
-                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
-                        end;
-                    {_, Asc} ->
-                        case lists:member(Asc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
-                            false ->
-                                NAsc = alinkiot_tdengine_common:to_td_field_name(Asc),
-                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => NAsc};
-                            true ->
-                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
-                        end
-                end,
-            case query_alink(Args1#{<<"timeAs">> => <<"createTime">>}) of
-                {ok, Count, Rows} ->
-                    {ok, Count, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
-                {ok, Rows} ->
-                    {ok, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
-                {error, Reason} ->
-                    {error, Reason}
+    case alinkcore_cache:query_device(Addr) of
+        {ok, #{<<"product">> := PId}} ->
+            case alinkcore_cache:query_product(PId) of
+                {ok, #{<<"thing">> := Thing}} when Thing =/= []
+                                                andalso is_list(Thing)->
+                    ThingInfo =
+                        lists:map(
+                            fun(#{<<"name">> := F} = FInfo) ->
+                                TdF = alinkiot_tdengine_common:to_td_field_name(F),
+                                FInfo#{<<"name">> => TdF, <<"as">> => TdF}
+                        end, Thing),
+                    ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
+                    Where =
+                        maps:fold(
+                            fun(K, V, Acc) ->
+                                LegalFields = [<<"createTime">>, <<"createTime[begin]">>, <<"createTime[end]">>,
+                                                <<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
+                                case {lists:member(K, LegalFields), lists:member(K, ThingFields)} of
+                                    {true, true} ->
+                                        TdF = alinkiot_tdengine_common:to_td_field_name(K),
+                                        Acc#{TdF => V};
+                                    {true, _} ->
+                                        Acc#{K => V};
+                                    _ ->
+                                        Acc
+                                end
+                        end, #{}, Args),
+                    Args1 =
+                        case {maps:get(<<"orderBy[desc]">>, Args, undefined),
+                            maps:get(<<"orderBy[asc]">>, Args, undefined)} of
+                            {undefined, undefined} ->
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where};
+                            {Desc, _} when Desc =/= undefined ->
+                                case lists:member(Desc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
+                                    false ->
+                                        NDesc = alinkiot_tdengine_common:to_td_field_name(Desc),
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => NDesc};
+                                    true ->
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
+                                end;
+                            {_, Asc} ->
+                                case lists:member(Asc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
+                                    false ->
+                                        NAsc = alinkiot_tdengine_common:to_td_field_name(Asc),
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => NAsc};
+                                    true ->
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
+                                end
+                        end,
+                    case query_alink(Args1#{<<"timeAs">> => <<"createTime">>}) of
+                        {ok, Count, Rows} ->
+                            {ok, Count, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
+                        {ok, Rows} ->
+                            {ok, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                {ok, _} ->
+                    logger:error("device ~p thing error", [Addr]),
+                    {ok, []};
+                Err ->
+                    {error, Err}
             end;
-        {ok, _} ->
-            logger:error("add ~p thing error", [Addr]),
-            {ok, []};
-        {error, Reason} ->
-            {error, Reason}
+        Err ->
+            {error, Err}
     end.
+
 
 query_alink(Param) ->
     Table = parse_table(Param),
