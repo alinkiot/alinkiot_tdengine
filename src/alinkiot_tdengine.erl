@@ -216,7 +216,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"tr
         lists:map(
             fun(Addr) ->
                 Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
-                #{Addr => do_get_device_last_row(Args)}
+                (do_get_device_last_row(Args))#{<<"addr">> => Addr}
         end, Addrs),
     Res = alinkdata_ajax_result:success_result(AddrRows),
     alinkdata_common_service:response(Res, Req);
