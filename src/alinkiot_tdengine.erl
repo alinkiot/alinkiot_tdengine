@@ -207,7 +207,7 @@ export_history(_OperationID, _Args, _Context, #{has_body := true} = Req) ->
     {200, Headers, Content}.
 
 
-get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := true}, _Context, Req) ->
+get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"true">>}, _Context, Req) ->
     Addrs =
         lists:filter(
             fun(A) -> A =/= <<>>
