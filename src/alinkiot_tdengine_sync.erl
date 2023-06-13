@@ -14,7 +14,8 @@
     sync/0,
     sync/1,
     sync_add/0,
-    all_device_table_add_tag/2
+    all_device_table_add_tag/2,
+    all_device_table_delete_tag/1
 ]).
 
 -define(IS_EMPTY(V), V == <<>> orelse V == null orelse V == undefined).
@@ -91,6 +92,41 @@ all_device_table_add_tag(Name, Type) ->
                             logger:error("descirbe ~p failed ~p", [STable, Reason])
                     end
             end, ExistsSTablesList);
+        {error, Reason} ->
+            logger:error("get stables failed ~p", [Reason])
+    end.
+
+
+all_device_table_delete_tag(Name) ->
+    case alinkiot_tdengine:request(<<"show stables">>) of
+        {ok, _, ExistsSTables} ->
+            ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            ExistsSTablesList =
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                    (_) -> true end, ExistsSTablesList0),
+            lists:foreach(
+                fun(STable) ->
+                    case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
+                        {ok, _, Schema} ->
+                            case lists:any(
+                                fun(#{<<"field">> := N}) ->
+                                    Name =:= N
+                                end, Schema) of
+                                true ->
+                                    TagSql = <<"alter stable ", STable/binary, " drop tag ", Name/binary>>,
+                                    case alinkiot_tdengine:request(TagSql) of
+                                        {ok, _, _} ->
+                                            ok;
+                                        {error, Reason} ->
+                                            logger:error("add ~p tag failed ~p", [STable, Reason])
+                                    end;
+                                _ ->
+                                    ok
+                            end;
+                        {error, Reason} ->
+                            logger:error("descirbe ~p failed ~p", [STable, Reason])
+                    end
+                end, ExistsSTablesList);
         {error, Reason} ->
             logger:error("get stables failed ~p", [Reason])
     end.

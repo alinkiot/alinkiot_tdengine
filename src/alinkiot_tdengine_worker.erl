@@ -156,7 +156,8 @@ build_sub_sql(Msg) ->
             null ->
                 <<"NULL">>;
             AlarmRule ->
-                alinkutil_type:to_binary(AlarmRule)
+                AB = alinkutil_type:to_binary(AlarmRule),
+                <<"'", AB/binary, "'">>
         end,
 
     Table = binary:replace(<<"device_", Addr/binary>>, <<"-">>, <<"_">>, [global]),
