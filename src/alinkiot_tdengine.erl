@@ -120,7 +120,7 @@ create_alink_schema(ProductId, ThingInfo) ->
                     <<"name">> => alinkiot_tdengine_common:to_td_field_name(Name),
                     <<"type">> => alinkiot_tdengine_common:thing_field_precision_type(FInfo)
                 }
-            end, FilterThingInfo0) ++ [{#{<<"name">> => <<"alarm_rule">>, <<"type">> => <<"string">>}}],
+            end, FilterThingInfo0) ++ [#{<<"name">> => <<"alarm_rule">>, <<"type">> => <<"string">>}],
     Tags = [
         #{<<"name">> => <<"addr">>, <<"type">> => <<"string">>},
         #{<<"name">> => <<"product_id">>, <<"type">> => <<"int">>}
