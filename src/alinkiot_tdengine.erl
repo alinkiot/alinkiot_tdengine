@@ -224,7 +224,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"tr
 get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
     Res =
-        case do_query_history(Args#{<<"extra_fields">> => [<<"alarm_rule">>]}) of
+        case do_query_history(Args#{<<"extra_fields">> => [#{<<"name">> => <<"alarm_rule">>}]}) of
             {ok, []} ->
                 alinkdata_ajax_result:success_result(#{});
             {ok, [Row|_]} ->
