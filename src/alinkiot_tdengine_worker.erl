@@ -190,4 +190,4 @@ build_sub_sql(Msg) ->
             end, {<<"time">>, MilliTimeB}, Msg),
     Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
         AddrB/binary, ",", ProductIdB/binary, ") values (", AlarmRuleB/binary>>,
-    <<" ", Table/binary, "(alarm_rule", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
+    <<" ", Table/binary, "(alarm_rule, ", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
