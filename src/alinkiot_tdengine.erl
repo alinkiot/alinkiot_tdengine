@@ -224,7 +224,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"tr
 get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
     Res =
-        case do_query_history(Args) of
+        case do_query_history(Args#{<<"extra_fields">> => [<<"alarm_rule">>]}) of
             {ok, []} ->
                 alinkdata_ajax_result:success_result(#{});
             {ok, [Row|_]} ->
@@ -236,7 +236,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     alinkdata_common_service:response(Res, Req).
 
 do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
-    case do_query_history(Args) of
+    case do_query_history(Args#{<<"extra_fields">> => [#{<<"name">> => <<"alarm_rule">>}]}) of
         {ok, []} ->
             #{};
         {ok, [Row|_]} ->
@@ -254,12 +254,13 @@ do_query_history(#{<<"addr">> := Addr} = Args) ->
             case alinkcore_cache:query_product(PId) of
                 {ok, #{<<"thing">> := Thing}} when Thing =/= []
                                                 andalso is_list(Thing)->
+                    ExtraFields = maps:get(<<"extra_fields">>, Args, []),
                     ThingInfo =
                         lists:map(
                             fun(#{<<"name">> := F} = FInfo) ->
                                 TdF = alinkiot_tdengine_common:to_td_field_name(F),
                                 FInfo#{<<"name">> => TdF, <<"as">> => TdF}
-                        end, Thing),
+                        end, Thing) ++ ExtraFields,
                     ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
                     Where =
                         maps:fold(
