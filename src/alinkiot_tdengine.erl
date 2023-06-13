@@ -223,8 +223,9 @@ get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"tr
     alinkdata_common_service:response(Res, Req);
 get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
+    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
     Res =
-        case do_query_history(Args#{<<"extra_fields">> => [#{<<"name">> => <<"alarm_rule">>}]}) of
+        case do_query_history(Args#{<<"extra_fields">> => ExtraFields}) of
             {ok, []} ->
                 alinkdata_ajax_result:success_result(#{});
             {ok, [Row|_]} ->
@@ -236,7 +237,8 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
     alinkdata_common_service:response(Res, Req).
 
 do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
-    case do_query_history(Args#{<<"extra_fields">> => [#{<<"name">> => <<"alarm_rule">>}]}) of
+    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
+    case do_query_history(Args#{<<"extra_fields">> => ExtraFields}) of
         {ok, []} ->
             #{};
         {ok, [Row|_]} ->
