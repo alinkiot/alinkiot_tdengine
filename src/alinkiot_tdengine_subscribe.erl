@@ -66,7 +66,19 @@ data_publish(ProductId, Addr, Data) ->
                                         Acc
                                 end
                         end, #{}, Data),
-                    alinkiot_tdengine_worker:insert(NData#{<<"addr">> => Addr, <<"productId">> => ProductId})
+                    InserData =
+                        case maps:is_key(<<"alarm_rule">>, Data) of
+                            true ->
+                                NData#{
+                                    <<"addr">> => Addr,
+                                    <<"productId">> => ProductId,
+                                    <<"ts">> => maps:get(<<"ts">>, Data, erlang:system_time(second)),
+                                    <<"alarm_rule">> => maps:get(<<"alarm_rule">>)
+                                };
+                            false ->
+                                NData#{<<"addr">> => Addr, <<"productId">> => ProductId}
+                        end,
+                    alinkiot_tdengine_worker:insert(InserData)
             end;
         {error, Reason} ->
             logger:error("get product thing error ~p", [Reason])
