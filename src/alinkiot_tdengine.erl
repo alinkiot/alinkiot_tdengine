@@ -232,7 +232,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
                 alinkdata_ajax_result:success_result(Row);
             {error, Reason} ->
                 logger:error("query device ~p last row failed", [Addr, Reason]),
-                alinkdata_ajax_result:error_result(<<"Internal Error">>, Req)
+                alinkdata_ajax_result:error_result(<<"Internal Error">>)
         end,
     alinkdata_common_service:response(Res, Req).
 
