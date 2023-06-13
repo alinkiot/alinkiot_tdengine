@@ -123,7 +123,8 @@ create_alink_schema(ProductId, ThingInfo) ->
             end, FilterThingInfo0),
     Tags = [
         #{<<"name">> => <<"addr">>, <<"type">> => <<"string">>},
-        #{<<"name">> => <<"product_id">>, <<"type">> => <<"int">>}
+        #{<<"name">> => <<"product_id">>, <<"type">> => <<"int">>},
+        #{<<"name">> => <<"alarm_rule">>, <<"type">> => <<"int">>}
     ],
     CreateSchemaParam =
         #{

@@ -151,6 +151,14 @@ build_sub_sql(Msg) ->
         <<"addr">> := Addr,
         <<"productId">> := ProductId
     } = Msg,
+    AlarmRuleB =
+        case maps:get(<<"alarm_rule">>, Msg, null) of
+            null ->
+                <<"NULL">>;
+            AlarmRule ->
+                alinkutil_type:to_binary(AlarmRule)
+        end,
+
     Table = binary:replace(<<"device_", Addr/binary>>, <<"-">>, <<"_">>, [global]),
     ProductIdB = alinkutil_type:to_binary(ProductId),
     STable = <<"alinkiot_", ProductIdB/binary>>,
@@ -179,6 +187,6 @@ build_sub_sql(Msg) ->
                         {<<Acc0/binary, ",", TdF/binary>>, <<Acc1/binary, ",", VB/binary>>}
                 end
             end, {<<"time">>, MilliTimeB}, Msg),
-    Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
-        AddrB/binary, ",", ProductIdB/binary, ") values (">>,
+    Sql2 = <<") using ", STable/binary, "(addr, product_id, alarm_rule) tags(",
+        AddrB/binary, ",", ProductIdB/binary, ",", AlarmRuleB/binary, ") values (">>,
     <<" ", Table/binary, "(", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
