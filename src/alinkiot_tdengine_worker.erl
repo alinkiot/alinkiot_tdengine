@@ -187,7 +187,7 @@ build_sub_sql(Msg) ->
                         VB = alinkiot_tdengine_common:to_sql_bin(V),
                         {<<Acc0/binary, ",", TdF/binary>>, <<Acc1/binary, ",", VB/binary>>}
                 end
-            end, {<<"time">>, MilliTimeB}, Msg),
+            end, {<<"time, alalrm_rule">>, <<MilliTimeB/binary, ",", AlarmRuleB/binary>>}, Msg),
     Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
-        AddrB/binary, ",", ProductIdB/binary, ") values (", AlarmRuleB/binary>>,
-    <<" ", Table/binary, "(alarm_rule, ", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
+        AddrB/binary, ",", ProductIdB/binary, ") values (">>,
+    <<" ", Table/binary, "(", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
