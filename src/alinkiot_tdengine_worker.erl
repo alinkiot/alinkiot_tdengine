@@ -188,6 +188,6 @@ build_sub_sql(Msg) ->
                         {<<Acc0/binary, ",", TdF/binary>>, <<Acc1/binary, ",", VB/binary>>}
                 end
             end, {<<"time">>, MilliTimeB}, Msg),
-    Sql2 = <<") using ", STable/binary, "(addr, product_id, alarm_rule) tags(",
-        AddrB/binary, ",", ProductIdB/binary, ",", AlarmRuleB/binary, ") values (">>,
-    <<" ", Table/binary, "(", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.
+    Sql2 = <<") using ", STable/binary, "(addr, product_id) tags(",
+        AddrB/binary, ",", ProductIdB/binary, ") values (", AlarmRuleB/binary>>,
+    <<" ", Table/binary, "(alarm_rule", Sql0/binary, Sql2/binary, Sql1/binary, ")">>.

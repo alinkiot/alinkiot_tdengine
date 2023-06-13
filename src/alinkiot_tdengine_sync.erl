@@ -15,7 +15,9 @@
     sync/1,
     sync_add/0,
     all_device_table_add_tag/2,
-    all_device_table_delete_tag/1
+    all_device_table_delete_tag/1,
+    all_device_table_add_column/2,
+    all_device_table_delete_column/1
 ]).
 
 -define(IS_EMPTY(V), V == <<>> orelse V == null orelse V == undefined).
@@ -130,6 +132,78 @@ all_device_table_delete_tag(Name) ->
         {error, Reason} ->
             logger:error("get stables failed ~p", [Reason])
     end.
+
+
+all_device_table_add_column(Name, Type) ->
+    TagType = alinkiot_tdengine_common:transform_field_type(Type),
+    case alinkiot_tdengine:request(<<"show stables">>) of
+        {ok, _, ExistsSTables} ->
+            ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            ExistsSTablesList =
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                    (_) -> true end, ExistsSTablesList0),
+            lists:foreach(
+                fun(STable) ->
+                    case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
+                        {ok, _, Schema} ->
+                            case lists:any(
+                                fun(#{<<"field">> := N}) ->
+                                    Name =:= N
+                                end, Schema) of
+                                true ->
+                                    ok;
+                                _ ->
+                                    TagSql = <<"alter stable ", STable/binary, " add column ",
+                                        Name/binary, " ", TagType/binary>>,
+                                    case alinkiot_tdengine:request(TagSql) of
+                                        {ok, _, _} ->
+                                            ok;
+                                        {error, Reason} ->
+                                            logger:error("add ~p tag failed ~p", [STable, Reason])
+                                    end
+                            end;
+                        {error, Reason} ->
+                            logger:error("descirbe ~p failed ~p", [STable, Reason])
+                    end
+                end, ExistsSTablesList);
+        {error, Reason} ->
+            logger:error("get stables failed ~p", [Reason])
+    end.
+
+
+all_device_table_delete_column(Name) ->
+    case alinkiot_tdengine:request(<<"show stables">>) of
+        {ok, _, ExistsSTables} ->
+            ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
+            ExistsSTablesList =
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                    (_) -> true end, ExistsSTablesList0),
+            lists:foreach(
+                fun(STable) ->
+                    case alinkiot_tdengine:request(<<"describe ", STable/binary>>) of
+                        {ok, _, Schema} ->
+                            case lists:any(
+                                fun(#{<<"field">> := N}) ->
+                                    Name =:= N
+                                end, Schema) of
+                                true ->
+                                    TagSql = <<"alter stable ", STable/binary, " drop column ", Name/binary>>,
+                                    case alinkiot_tdengine:request(TagSql) of
+                                        {ok, _, _} ->
+                                            ok;
+                                        {error, Reason} ->
+                                            logger:error("add ~p tag failed ~p", [STable, Reason])
+                                    end;
+                                _ ->
+                                    ok
+                            end;
+                        {error, Reason} ->
+                            logger:error("descirbe ~p failed ~p", [STable, Reason])
+                    end
+                end, ExistsSTablesList);
+        {error, Reason} ->
+            logger:error("get stables failed ~p", [Reason])
+    end.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -204,7 +278,9 @@ get_stable_schema(STable) ->
                             ValueFieldsCount =
                                 length(lists:filter(
                                     fun(#{<<"field">> := Name, <<"note">> := Note}) ->
-                                        Name =/= <<"time">> andalso Note =/= <<"TAG">>
+                                        Name =/= <<"time">> andalso
+                                            Note =/= <<"TAG">>
+                                            andalso Name =/= <<"alarm_rule">>
                                 end, Schema)),
                             {ok, Schema, ValueFieldsCount};
                         {error, Reason} ->
@@ -230,7 +306,8 @@ diff_schema_and_thing(Schema, ThingInfo) ->
                         fun(#{<<"field">> := Field,
                               <<"type">> := FieldType,
                               <<"note">> := Note}) when Field =:= TdF
-                                                   andalso Note =/= <<"TAG">>->
+                                                   andalso Note =/= <<"TAG">>
+                                                    andalso Field =/= <<"alarm_rule">> ->
                             case alinkiot_tdengine_common:transform_field_type(ThingType) of
                                 FieldType ->
                                     true;
@@ -254,7 +331,8 @@ diff_schema_and_thing(Schema, ThingInfo) ->
             fun(#{<<"field">> := TdF,
                   <<"type">> := FieldType,
                   <<"note">> := Note}, Acc) when TdF =/= <<"time">>
-                                            andalso Note =/= <<"TAG">> ->
+                                            andalso Note =/= <<"TAG">>
+                                            andalso TdF =/= <<"alarm_rule">> ->
                 Field = alinkiot_tdengine_common:from_td_field_name(TdF),
                 IsExistInThing =
                     lists:any(
