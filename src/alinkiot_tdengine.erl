@@ -184,7 +184,16 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     request(Sql).
 
 %% 查询，
-query_history(_OperationID, Args, _Context, Req) ->
+query_history(_OperationID, RArgs, _Context, Req) ->
+
+    Args =
+        case maps:get(<<"step">>, RArgs, undefined) of
+            undefined ->
+                ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
+                RArgs#{<<"extra_fields">> => ExtraFields};
+            _ ->
+                RArgs
+        end,
     case do_query_history(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
