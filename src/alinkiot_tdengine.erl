@@ -22,6 +22,7 @@
     add_columns/2,
     add_column/2,
     drop_stable/1,
+    query_device_log/4,
     query_history/4,
     get_device_last_row/4,
     export_history/4,
@@ -182,6 +183,33 @@ insert_object(TableName, #{<<"values">> := Values0} = Object) ->
     Values = format_batch(Object#{ <<"tableName">> => TableName, <<"values">> => [Values0]}),
     Sql = <<"INSERT INTO ", Values/binary, ";">>,
     request(Sql).
+
+
+%% 查询，
+query_device_log(_OperationID, RArgs, _Context, Req) ->
+    Where =
+        maps:fold(
+            fun(K, V, Acc) ->
+                case lists:member(K, [<<"time[begin]">>, <<"time[end]">>, <<"addr">>]) of
+                    true ->
+                        Acc#{K => V};
+                    _ ->
+                        Acc
+                end
+        end, [], RArgs),
+    Table = <<"metrics_device_log">>,
+    Args = RArgs#{<<"table">> => Table, <<"where">> => Where},
+    case query_alink(Args) of
+        {ok, Count, Rows} ->
+            CommonSuccessRes = alinkdata_ajax_result:success_result(),
+            Res = maps:merge(#{total => Count, rows => Rows}, CommonSuccessRes),
+            alinkdata_common_service:response(Res, Req);
+        {ok, Rows} ->
+            alinkdata_common_service:response(alinkdata_ajax_result:success_result(Rows), Req);
+        {error, Reason} ->
+            Msg = list_to_binary(io_lib:format("~p", [Reason])),
+            alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
+    end.
 
 %% 查询，
 query_history(_OperationID, RArgs, _Context, Req) ->
@@ -374,7 +402,8 @@ query_alink(Param) ->
             end
     end.
 
-
+parse_table(#{<<"table">> := Table}) ->
+    Table;
 parse_table(#{<<"addr">> := Addr}) ->
     AddrB = binary:replace(alinkutil_type:to_binary(Addr), <<"-">>, <<"_">>, [global]),
     <<"device_", AddrB/binary>>;
