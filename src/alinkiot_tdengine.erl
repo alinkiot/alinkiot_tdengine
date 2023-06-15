@@ -196,7 +196,7 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
                     _ ->
                         Acc
                 end
-        end, [], RArgs),
+        end, #{}, RArgs),
     Table = <<"metrics_device_log">>,
     Args = RArgs#{<<"table">> => Table, <<"where">> => Where},
     case query_alink(Args) of
