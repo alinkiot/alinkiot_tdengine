@@ -160,6 +160,7 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
     Table = <<"metrics_device_log_", AddrTableV/binary>>,
     NodeB = alinkutil_type:to_binary(node()),
     TimeB = alinkutil_type:to_binary(Time),
+    ProductIdB = alinkutil_type:to_binary(ProductId),
     MilliTimeB =
         case byte_size(TimeB) of
             10 ->
@@ -168,6 +169,6 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
                 TimeB
         end,
     <<" ", Table/binary, "(time, data, event, reason, result) using metrics_device_log",
-        "(node, addr, product_id) tags('", NodeB/binary, "','", Addr/binary, "',", ProductId/binary,
+        "(node, addr, product_id) tags('", NodeB/binary, "','", Addr/binary, "',", ProductIdB/binary,
         ") values(", MilliTimeB/binary, ",'", Data/binary, "','", Event/binary, "','",
         Reason/binary, "','", Result/binary, "')">>.
