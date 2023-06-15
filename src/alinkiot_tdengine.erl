@@ -198,7 +198,8 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
                 end
         end, #{}, RArgs),
     Table = <<"metrics_device_log">>,
-    Args = RArgs#{<<"table">> => Table, <<"where">> => Where},
+    Fields = [<<"data">>, <<"addr">>, <<"event">>, <<"reason">>, <<"result">>],
+    Args = RArgs#{<<"table">> => Table, <<"where">> => Where, <<"fields">> => Fields},
     case query_alink(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
