@@ -22,6 +22,7 @@ start(_StartType, _StartArgs) ->
     alinkiot_tdengine_sync:sync(),
     alinkiot_tdengine_subscribe:load(),
     alinkiot_tdengine_worker:start_workers(),
+    alinkiot_tdengine_metrics_worker:start_workers(),
     {ok, Sup}.
 
 %%--------------------------------------------------------------------
