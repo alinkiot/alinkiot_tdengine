@@ -441,8 +441,11 @@ parse_order_by(_) ->
 
 parse_where(#{<<"where">> := Where}) ->
     maps:fold(
-        fun(K, V, Acc) when K =:= <<"time[begin]">>
-                        orelse K =:= <<"createTime[begin]">>->
+        fun(_K, V, Acc) when V =:= null
+                            orelse V=:= undefined ->
+                Acc;
+            (K, V, Acc) when K =:= <<"time[begin]">>
+                        orelse K =:= <<"createTime[begin]">> ->
             VB = alinkiot_tdengine_common:to_sql_bin(V),
             <<Acc/binary, " and time >= ", VB/binary>>;
            (K, V, Acc) when K =:= <<"time[end]">>
