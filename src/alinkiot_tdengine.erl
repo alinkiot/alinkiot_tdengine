@@ -414,7 +414,8 @@ parse_table(#{<<"productId">> := ProductId}) ->
 
 parse_page(#{<<"type">> := <<"chart">>}) ->
     <<>>;
-parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) ->
+parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) when is_binary(RPageSize)
+                                                                andalso is_binary(RPageNum)->
     PageSize = alinkutil_type:to_integer(RPageSize),
     PageNum = alinkutil_type:to_integer(RPageNum),
     Offset = PageSize * (PageNum - 1),
@@ -431,9 +432,9 @@ parse_interval(_) ->
     <<>>.
 
 
-parse_order_by(#{<<"orderBy[desc]">> := Field}) ->
+parse_order_by(#{<<"orderBy[desc]">> := Field}) when is_binary(Field)->
     <<" order by ", Field/binary, " desc">>;
-parse_order_by(#{<<"orderBy[asc]">> := Field}) ->
+parse_order_by(#{<<"orderBy[asc]">> := Field}) when is_binary(Field) ->
     <<" order by ", Field/binary, " asc">>;
 parse_order_by(_) ->
     <<>>.
