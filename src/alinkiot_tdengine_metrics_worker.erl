@@ -38,7 +38,7 @@
 %%% API
 %%%===================================================================
 insert_device_log(Args) ->
-    F = fun(Pid) -> alinkiot_tdengine_metrics_worker_pool:insert_device_log(Pid, Args) end,
+    F = fun(Pid) -> alinkiot_tdengine_metrics_worker:insert_device_log(Pid, Args) end,
     ecpool:with_client(alinkiot_tdengine_metrics_worker_pool, F).
 
 
