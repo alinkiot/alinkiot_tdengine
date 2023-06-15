@@ -168,6 +168,6 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
                 TimeB
         end,
     <<" ", Table/binary, "(time, data, event, reason, result) using metrics_device_log",
-        "(node, addr, product_id) tags(", NodeB/binary, ",", Addr/binary, ",", ProductId/binary,
-        ") values(", MilliTimeB/binary, ",", Data/binary, Event/binary, ",",
-        Reason/binary, ",", Result/binary, ")">>.
+        "(node, addr, product_id) tags('", NodeB/binary, "','", Addr/binary, "',", ProductId/binary,
+        ") values(", MilliTimeB/binary, ",'", Data/binary, "','", Event/binary, "','",
+        Reason/binary, "','", Result/binary, "')">>.
