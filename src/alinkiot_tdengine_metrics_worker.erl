@@ -154,7 +154,8 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
         <<"result">> := Result,
         <<"reason">> := Reason,
         <<"time">> := Time,
-        <<"event">> := Event
+        <<"event">> := Event,
+        <<"ip">> := Ip
     } = Msg,
     AddrTableV = binary:replace(Addr, <<"-">>, <<"_">>, [global]),
     Table = <<"metrics_device_log_", AddrTableV/binary>>,
@@ -168,7 +169,7 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
             _ ->
                 TimeB
         end,
-    <<" ", Table/binary, "(time, data, event, reason, result) using metrics_device_log",
+    <<" ", Table/binary, "(time, data, event, reason, result, ip) using metrics_device_log",
         "(node, addr, product_id) tags('", NodeB/binary, "','", Addr/binary, "',", ProductIdB/binary,
         ") values(", MilliTimeB/binary, ",'", Data/binary, "','", Event/binary, "','",
-        Reason/binary, "','", Result/binary, "')">>.
+        Reason/binary, "','", Result/binary, "','", Ip/binary, "')">>.

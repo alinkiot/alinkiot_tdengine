@@ -202,7 +202,7 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
         lists:map(
             fun(F) ->
                 #{<<"name">> => F}
-        end, [<<"data">>, <<"addr">>, <<"event">>, <<"reason">>, <<"result">>]),
+        end, [<<"data">>, <<"addr">>, <<"event">>, <<"reason">>, <<"result">>, <<"ip">>]),
     Args = RArgs#{<<"table">> => Table, <<"where">> => Where, <<"fields">> => Fields},
     case query_alink(Args) of
         {ok, Count, Rows} ->
