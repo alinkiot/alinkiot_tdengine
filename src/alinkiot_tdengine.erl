@@ -419,8 +419,8 @@ parse_table(#{<<"productId">> := ProductId}) ->
 
 parse_page(#{<<"type">> := <<"chart">>}) ->
     <<>>;
-parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) when is_binary(RPageSize)
-                                                                andalso is_binary(RPageNum)->
+parse_page(#{<<"pageSize">> := RPageSize, <<"pageNum">> := RPageNum}) when RPageSize =/= undefined
+                                                                andalso RPageNum =/= undefined ->
     PageSize = alinkutil_type:to_integer(RPageSize),
     PageNum = alinkutil_type:to_integer(RPageNum),
     Offset = PageSize * (PageNum - 1),
