@@ -381,7 +381,7 @@ query_alink(Param) ->
         end,
     case parse_page(Param) of
         <<>> ->
-            case request(Sql) of
+            case request(<<Sql/binary, " LIMIT 30000">>) of
                 {ok, _, Rows} ->
                     {ok, Rows};
                 {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
