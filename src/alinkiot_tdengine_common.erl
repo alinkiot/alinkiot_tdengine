@@ -57,6 +57,8 @@ transform_field_type(<<"float">>) ->
     <<"FLOAT">>;
 transform_field_type(<<"string">>) ->
     <<"VARCHAR(100)">>;
+transform_field_type(<<"array">>) ->
+    <<"VARCHAR(4096)">>;
 transform_field_type(Type) ->
     Type.
 
