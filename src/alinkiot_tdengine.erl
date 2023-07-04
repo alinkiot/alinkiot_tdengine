@@ -197,13 +197,29 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
                         Acc
                 end
         end, #{}, RArgs),
+    Now = erlang:system_time(second),
+    BeforeTenMin = Now - 10 * 60,
+    Where0 =
+        case maps:get(<<"time[begin]">>, Where, undefined) of
+            undefined ->
+                Where#{<<"time[begin]">> => timestamp2localtime_str(BeforeTenMin)};
+            _ ->
+                Where
+        end,
+    Where1 =
+        case maps:get(<<"time[end]">>, Where0, undefined) of
+            undefined ->
+                Where0#{<<"time[end]">> => timestamp2localtime_str(Now)};
+            _ ->
+                Where0
+        end,
     Table = <<"metrics_device_log">>,
     Fields =
         lists:map(
             fun(F) ->
                 #{<<"name">> => F}
         end, [<<"data">>, <<"addr">>, <<"event">>, <<"reason">>, <<"result">>, <<"ip">>]),
-    Args = RArgs#{<<"table">> => Table, <<"where">> => Where, <<"fields">> => Fields},
+    Args = RArgs#{<<"table">> => Table, <<"where">> => Where1, <<"fields">> => Fields},
     case query_alink(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
@@ -776,3 +792,9 @@ to_fields_bin(_, Fields, TimeAs, _Function) ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ", avg(", F/binary, ") as ", Alias/binary>>
         end, <<"TIMEDIFF(_wstart, 0, 1s) as ", TimeAs/binary>>, Fields1).
+
+
+
+timestamp2localtime_str(TimeStamp) ->
+    {{Y, M, D}, {H, Mi, S}} = calendar:gregorian_seconds_to_datetime(TimeStamp + 3600 *8 + calendar:datetime_to_gregorian_seconds({{1970,1,1}, {0,0,0}})),
+    list_to_binary(lists:flatten(io_lib:format("~w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",[Y,M,D,H,Mi,S]))).
