@@ -180,10 +180,10 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
 event_tail(<<"auth">>) ->
     <<"001">>;
 event_tail(<<"up_data">>) ->
-    <<"001">>;
+    <<"002">>;
 event_tail(<<"down_data">>) ->
-    <<"001">>;
+    <<"003">>;
 event_tail(<<"logout">>) ->
-    <<"001">>;
+    <<"004">>;
 event_tail(_) ->
     <<"000">>.
