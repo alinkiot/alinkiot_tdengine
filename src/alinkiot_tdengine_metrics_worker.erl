@@ -162,10 +162,11 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
     NodeB = alinkutil_type:to_binary(node()),
     TimeB = alinkutil_type:to_binary(Time),
     ProductIdB = alinkutil_type:to_binary(ProductId),
+    MillTail = event_tail(Event),
     MilliTimeB =
         case byte_size(TimeB) of
             10 ->
-                <<TimeB/binary, "000">>;
+                <<TimeB/binary, MillTail/binary>>;
             _ ->
                 TimeB
         end,
@@ -173,3 +174,16 @@ build_sub_sql(#{<<"metrics_type">> := <<"device_log">>} = Msg) ->
         "(node, addr, product_id) tags('", NodeB/binary, "','", Addr/binary, "',", ProductIdB/binary,
         ") values(", MilliTimeB/binary, ",'", Data/binary, "','", Event/binary, "','",
         Reason/binary, "','", Result/binary, "','", Ip/binary, "')">>.
+
+
+
+event_tail(<<"auth">>) ->
+    <<"001">>;
+event_tail(<<"up_data">>) ->
+    <<"001">>;
+event_tail(<<"down_data">>) ->
+    <<"001">>;
+event_tail(<<"logout">>) ->
+    <<"001">>;
+event_tail(_) ->
+    <<"000">>.
