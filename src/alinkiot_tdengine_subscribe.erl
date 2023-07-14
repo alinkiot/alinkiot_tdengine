@@ -76,7 +76,11 @@ data_publish(ProductId, Addr, Data) ->
                                     <<"alarm_rule">> => maps:get(<<"alarm_rule">>, Data)
                                 };
                             false ->
-                                NData#{<<"addr">> => Addr, <<"productId">> => ProductId}
+                                NData#{
+                                    <<"addr">> => Addr,
+                                    <<"productId">> => ProductId,
+                                    <<"ts">> => maps:get(<<"ts">>, Data, erlang:system_time(second))
+                                }
                         end,
                     alinkiot_tdengine_worker:insert(InserData)
             end;
