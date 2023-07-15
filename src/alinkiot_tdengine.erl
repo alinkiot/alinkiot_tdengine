@@ -260,8 +260,13 @@ export_history(_OperationID, _Args, _Context, #{has_body := true} = Req) ->
     Args = maps:from_list(B),
     NArgs = lists:foldl(fun(K, Acc) -> maps:remove(K, Acc) end, Args, [<<"pageNum">>, <<"pageSize">>]),
     {ok,Vs} = do_query_history(NArgs),
-    Content = alinkdata_common:to_file_content(Vs),
-    Headers = alinkdata_common:file_headers(Content, <<"\"history.csv\"">>),
+    FileName = <<"设备数据.xlsx"/utf8>>,
+    FileNameH = <<"\"", FileName/binary, "\"">>,
+    Addr = maps:get(<<"addr">>, NArgs, <<>>),
+    {ok, Content} = alinkdata_xlsx:to_xlsx_file_content(FileName, <<"device_data_", Addr/binary>>, Vs),
+    Headers = alinkdata_common:file_headers(Content, FileNameH),
+%%    Content = alinkdata_common:to_file_content(Vs),
+%%    Headers = alinkdata_common:file_headers(Content, <<"\"history.csv\"">>),
     {200, Headers, Content}.
 
 
