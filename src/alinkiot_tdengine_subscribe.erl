@@ -59,30 +59,40 @@ data_publish(ProductId, Addr, Data) ->
                     NData =
                         maps:fold(
                             fun(K, V, Acc) ->
-                                case lists:member(K, ThingNames) of
+                                case lists:member(K, ThingNames)  of
                                     true ->
-                                        Acc#{K => V};
+                                        case maps:get(<<"value">>, V, <<"alink_ignore">>) of
+                                            <<"alink_ignore", _/binary>> ->
+                                                Acc;
+                                            _ ->
+                                                Acc#{K => V}
+                                        end;
                                     false ->
                                         Acc
                                 end
                         end, #{}, Data),
-                    InserData =
-                        case maps:is_key(<<"alarm_rule">>, Data) of
-                            true ->
-                                NData#{
-                                    <<"addr">> => Addr,
-                                    <<"productId">> => ProductId,
-                                    <<"ts">> => maps:get(<<"ts">>, Data, erlang:system_time(second)),
-                                    <<"alarm_rule">> => maps:get(<<"alarm_rule">>, Data)
-                                };
-                            false ->
-                                NData#{
-                                    <<"addr">> => Addr,
-                                    <<"productId">> => ProductId,
-                                    <<"ts">> => maps:get(<<"ts">>, Data, erlang:system_time(second))
-                                }
-                        end,
-                    alinkiot_tdengine_worker:insert(InserData)
+                    case maps:size(NData) > 0 of
+                        true ->
+                            InserData =
+                                case maps:is_key(<<"alarm_rule">>, Data) of
+                                    true ->
+                                        NData#{
+                                            <<"addr">> => Addr,
+                                            <<"productId">> => ProductId,
+                                            <<"ts">> => maps:get(<<"ts">>, Data, erlang:system_time(second)),
+                                            <<"alarm_rule">> => maps:get(<<"alarm_rule">>, Data)
+                                        };
+                                    false ->
+                                        NData#{
+                                            <<"addr">> => Addr,
+                                            <<"productId">> => ProductId,
+                                            <<"ts">> => maps:get(<<"ts">>, Data, erlang:system_time(second))
+                                        }
+                                end,
+                            alinkiot_tdengine_worker:insert(InserData);
+                        _ ->
+                            ignore
+                    end
             end;
         {error, Reason} ->
             logger:error("get product thing error ~p", [Reason])
