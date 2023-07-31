@@ -423,12 +423,14 @@ query_alink_by_stable(#{<<"addrs">> := Addrs} = Param) ->
             [] ->
                 ParseWhere;
             Addrs ->
-                PW =
+                PW0 =
                     lists:foldl(
-                        fun(Addr, Acc) ->
-                            <<Acc/binary, "'", Addr/binary, "',">>
-                    end, <<ParseWhere/binary, " and addr in (">>, Addrs),
-                <<PW/binary, ")">>
+                        fun(Addr, <<>>) ->
+                            <<"'", Addr/binary, "'">>;
+                           (Addr, Acc) ->
+                            <<Acc/binary, ", '", Addr/binary, "'">>
+                    end, <<>>, Addrs),
+                <<ParseWhere/binary, " and addr in (", PW0/binary, ")">>
         end,
     GroupBy = parse_group_by(Param),
     Sql =
