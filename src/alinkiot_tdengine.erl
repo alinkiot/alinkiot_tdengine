@@ -37,6 +37,8 @@
     request/1
 ]).
 
+-define(DEFAULT_LIMIT, 30000).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -259,15 +261,22 @@ export_history(_OperationID, _Args, _Context, #{has_body := true} = Req) ->
     {ok, B, _Req2} = cowboy_req:read_urlencoded_body(Req),
     Args = maps:from_list(B),
     NArgs = lists:foldl(fun(K, Acc) -> maps:remove(K, Acc) end, Args, [<<"pageNum">>, <<"pageSize">>]),
-    {ok,Vs} = do_query_history(NArgs),
     FileName = <<"设备数据.xlsx"/utf8>>,
     FileNameH = <<"\"", FileName/binary, "\"">>,
-    Addr = maps:get(<<"addr">>, NArgs, <<>>),
-    {ok, Content} = alinkdata_xlsx:to_xlsx_file_content(FileName, <<"device_data_", Addr/binary>>, Vs),
-    Headers = alinkdata_common:file_headers(Content, FileNameH),
-%%    Content = alinkdata_common:to_file_content(Vs),
-%%    Headers = alinkdata_common:file_headers(Content, <<"\"history.csv\"">>),
-    {200, Headers, Content}.
+    RAddrs = binary:split(maps:get(<<"addr">>, NArgs, <<>>), <<",">>, [global]),
+    Addrs = lists:filter(fun(A) -> A =/= <<>> end, RAddrs),
+    case export_history_check_addr(Addrs) of
+        {ok, AddrFirst} ->
+            {ok,Vs} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => Addrs}),
+            T = <<"device_data_", AddrFirst/binary>>,
+            {ok, Content} = alinkdata_xlsx:to_xlsx_file_content(FileName, T, Vs),
+            Headers = alinkdata_common:file_headers(Content, FileNameH),
+            {200, Headers, Content};
+        {error, Reason} ->
+            logger:error("export ~p history failed:~p", [Addrs, Reason]),
+            Res = alinkdata_ajax_result:error_result(<<"导出设备出错，请检查设备设置是否正常"/utf8>>),
+            alinkdata_common_service:response(Res, Req)
+    end.
 
 
 get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"true">>}, _Context, Req) ->
@@ -309,6 +318,154 @@ do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
             logger:error("query device ~p last row failed", [Addr, Reason]),
             #{}
     end.
+
+export_history_check_addr([]) ->
+    {error, wrong_device};
+export_history_check_addr([_Addr]) ->
+    ok;
+export_history_check_addr(Addrs) ->
+    AddrFirst = hd(Addrs),
+    Args = #{<<"addrFirst">> => AddrFirst, <<"addrs">> => Addrs},
+    case alinkdata_dao:query_no_count(get_same_product_device, Args) of
+        {ok, SelectedAddrs} ->
+            SelectedAddrList = lists:map(fun(#{<<"addr">> := A}) -> A end, SelectedAddrs),
+            case lists:usort(Addrs) =:= lists:usort(SelectedAddrList) of
+                true ->
+                    {ok, AddrFirst};
+                false ->
+                    {error, wrong_device}
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+
+do_query_history_by_stable(#{<<"addrFirst">> := AddrFirst} = Args) ->
+    case alinkcore_cache:query_device(AddrFirst) of
+        {ok, #{<<"product">> := PId}} ->
+            case alinkcore_cache:query_product(PId) of
+                {ok, #{<<"thing">> := Thing}} when Thing =/= []
+                    andalso is_list(Thing)->
+                    ExtraFields = maps:get(<<"extra_fields">>, Args, []),
+                    ThingInfo =
+                        lists:map(
+                            fun(#{<<"name">> := F} = FInfo) ->
+                                TdF = alinkiot_tdengine_common:to_td_field_name(F),
+                                FInfo#{<<"name">> => TdF, <<"as">> => TdF}
+                            end, Thing) ++ ExtraFields,
+                    ThingFields = lists:map(fun(#{<<"name">> := F}) -> F end, ThingInfo),
+                    Where =
+                        maps:fold(
+                            fun(K, V, Acc) ->
+                                LegalFields = [<<"createTime">>, <<"createTime[begin]">>, <<"createTime[end]">>,
+                                    <<"time">>, <<"time[begin]">>, <<"time[end]">>|ThingFields],
+                                case {lists:member(K, LegalFields), lists:member(K, ThingFields)} of
+                                    {true, true} ->
+                                        TdF = alinkiot_tdengine_common:to_td_field_name(K),
+                                        Acc#{TdF => V};
+                                    {true, _} ->
+                                        Acc#{K => V};
+                                    _ ->
+                                        Acc
+                                end
+                            end, #{}, Args),
+                    Args1 =
+                        case {maps:get(<<"orderBy[desc]">>, Args, undefined),
+                            maps:get(<<"orderBy[asc]">>, Args, undefined)} of
+                            {undefined, undefined} ->
+                                Args#{<<"fields">> => ThingInfo, <<"where">> => Where};
+                            {Desc, _} when Desc =/= undefined ->
+                                case lists:member(Desc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
+                                    false ->
+                                        NDesc = alinkiot_tdengine_common:to_td_field_name(Desc),
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[desc]">> => NDesc};
+                                    true ->
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
+                                end;
+                            {_, Asc} ->
+                                case lists:member(Asc, [<<"time">>, <<"addr">>, <<"createTime">>]) of
+                                    false ->
+                                        NAsc = alinkiot_tdengine_common:to_td_field_name(Asc),
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where, <<"orderBy[asc]">> => NAsc};
+                                    true ->
+                                        Args#{<<"fields">> => ThingInfo, <<"where">> => Where}
+                                end
+                        end,
+                    case query_alink_by_stable(Args1#{<<"timeAs">> => <<"createTime">>, <<"productId">> => PId}) of
+                        {ok, Count, Rows} ->
+                            {ok, Count, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
+                        {ok, Rows} ->
+                            {ok, alinkiot_tdengine_common:rows_from_td_field_name(Rows)};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                {ok, _} ->
+                    logger:error("device ~p thing error", [AddrFirst]),
+                    {ok, []};
+                Err ->
+                    {error, Err}
+            end;
+        Err ->
+            {error, Err}
+    end.
+
+
+query_alink_by_stable(#{<<"addrs">> := Addrs} = Param) ->
+    Table = parse_table(Param),
+    Interval = parse_interval(Param),
+    TimeAs = maps:get(<<"timeAs">>, Param, <<"time">>),
+    Function = maps:get(<<"function">> , Param, <<>>),
+    FieldsBin = to_fields_bin(Interval, maps:get(<<"fields">>, Param, []), TimeAs, Function),
+    OrderBy = parse_order_by(Param),
+    ParseWhere = parse_where(Param),
+    ParseWhere1 =
+        case maps:get(<<"addrs">>, Param, []) of
+            [] ->
+                ParseWhere;
+            Addrs ->
+                PW =
+                    lists:foldl(
+                        fun(Addr, Acc) ->
+                            <<Acc/binary, "'", Addr/binary, "',">>
+                    end, <<ParseWhere/binary, " and addr in (">>, Addrs),
+                <<PW/binary, ")">>
+        end,
+    GroupBy = parse_group_by(Param),
+    Sql =
+        case Interval of
+            <<>> ->
+                <<"select ", FieldsBin/binary, " from ", Table/binary,
+                    " where 1 = 1 ", ParseWhere1/binary, GroupBy/binary, OrderBy/binary>>;
+            _ ->
+                <<"select ", FieldsBin/binary, " from ", Table/binary,
+                    " where 1 = 1 ", ParseWhere1/binary, GroupBy/binary, Interval/binary, OrderBy/binary>>
+        end,
+    case parse_page(Param) of
+        <<>> ->
+            case foldl_limit_rows(Sql, [], 0) of
+                {ok, Rows} ->
+                    {ok, Rows};
+                {error, Reason} ->
+                    {error, Reason}
+            end;
+        Limit ->
+            case request(<<"select count(1) from (", Sql/binary, ")">>) of
+                {ok, 0, _} ->
+                    {ok, 0, []};
+                {ok, _, [#{<<"count(1)">> := Count}]} ->
+                    case request(<<Sql/binary, Limit/binary>>) of
+                        {ok, _, Rows} ->
+                            {ok, Count, Rows};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
+                    {ok, 0, []};
+                {error, Reason} ->
+                    {error, Reason}
+            end
+    end.
+
 
 
 
@@ -427,6 +584,23 @@ query_alink(Param) ->
                     {error, Reason}
             end
     end.
+
+
+foldl_limit_rows(Sql, AlreadyRows, N) ->
+    Start = N * ?DEFAULT_LIMIT,
+    StartB = alinkutil_type:to_binary(Start),
+    DEfaultLimitB = alinkutil_type:to_binary(?DEFAULT_LIMIT),
+    case request(<<Sql/binary, " LIMIT ", StartB/binary, ",", DEfaultLimitB/binary>>) of
+        {ok, Len, Rows} when Len < ?DEFAULT_LIMIT ->
+            {ok, lists:flatten(Rows, AlreadyRows)};
+        {ok, _, Rows} ->
+            foldl_limit_rows(Sql, lists:flatten(Rows, AlreadyRows), N + 1);
+        {error, #{<<"code">> := 9826,<<"desc">> := <<"Fail to get table info, error: Table does not exist">>}} ->
+            {ok, []};
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
 
 parse_table(#{<<"table">> := Table}) ->
     Table;
