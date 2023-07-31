@@ -257,9 +257,9 @@ query_history(_OperationID, RArgs, _Context, Req) ->
             alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
     end.
 
-export_history(_OperationID, Args, _Context, Req) ->
-%%    {ok, B, _Req2} = cowboy_req:read_urlencoded_body(Req),
-%%    Args = maps:from_list(B),
+export_history(_OperationID, _Args, _Context, Req) ->
+    {ok, B, _Req2} = cowboy_req:read_urlencoded_body(Req),
+    Args = maps:from_list(B),
     NArgs = lists:foldl(fun(K, Acc) -> maps:remove(K, Acc) end, Args, [<<"pageNum">>, <<"pageSize">>, <<"addr">>]),
     FileName = <<"设备数据.xlsx"/utf8>>,
     FileNameH = <<"\"", FileName/binary, "\"">>,
