@@ -321,8 +321,8 @@ do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
 
 export_history_check_addr([]) ->
     {error, wrong_device};
-export_history_check_addr([_Addr]) ->
-    ok;
+export_history_check_addr([Addr]) ->
+    {ok, Addr};
 export_history_check_addr(Addrs) ->
     AddrFirst = hd(Addrs),
     Args = #{<<"addrFirst">> => AddrFirst, <<"addrs">> => Addrs},
