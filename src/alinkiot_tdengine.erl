@@ -261,7 +261,7 @@ export_history(_OperationID, _Args, _Context, Req) ->
     {ok, B, _Req2} = cowboy_req:read_urlencoded_body(Req),
     Args = maps:from_list(B),
     NArgs = lists:foldl(fun(K, Acc) -> maps:remove(K, Acc) end, Args, [<<"pageNum">>, <<"pageSize">>, <<"addr">>]),
-    FileName = <<"设备数据.xlsx"/utf8>>,
+    FileName = <<"device_history_data.xlsx"/utf8>>,
     FileNameH = <<"\"", FileName/binary, "\"">>,
     RAddrs = binary:split(maps:get(<<"addr">>, Args, <<>>), <<",">>, [global]),
     Addrs = lists:filter(fun(A) -> A =/= <<>> end, RAddrs),
