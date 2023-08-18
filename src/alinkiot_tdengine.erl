@@ -280,7 +280,7 @@ export_history(_OperationID, _Args, _Context, Req) ->
                         lists:foldl(
                             fun(A, Acc) ->
                                 {ok,Vs0} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => [A]}),
-                                Acc ++ Vs0
+                                Acc ++ lists:map(fun(D) -> D#{<<"addr">> => A} end, Vs0)
                         end, [], Addrs)
                  end,
             T = <<"device_data_", AddrFirst/binary>>,
