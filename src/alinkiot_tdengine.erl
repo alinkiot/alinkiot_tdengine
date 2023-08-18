@@ -271,7 +271,18 @@ export_history(_OperationID, _Args, _Context, Req) ->
         ],
     case export_history_check_addr(Addrs) of
         {ok, AddrFirst} ->
-            {ok,Vs} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => Addrs, <<"extra_fields">> => ExtraFields}),
+            Vs =
+                case maps:get(<<"step">>, Args, undefined) of
+                    undefined ->
+                        {ok,Vs0} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => Addrs, <<"extra_fields">> => ExtraFields}),
+                        Vs0;
+                    _ ->
+                        lists:foldl(
+                            fun(A, Acc) ->
+                                {ok,Vs0} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => [A], <<"extra_fields">> => ExtraFields}),
+                                Acc ++ Vs0
+                        end, [], Addrs)
+                 end,
             T = <<"device_data_", AddrFirst/binary>>,
             {ok, Content} = alinkdata_xlsx:to_xlsx_file_content(FileName, T, Vs),
             Headers = alinkdata_common:file_headers(Content, FileNameH),
