@@ -279,7 +279,7 @@ export_history(_OperationID, _Args, _Context, Req) ->
                     _ ->
                         lists:foldl(
                             fun(A, Acc) ->
-                                {ok,Vs0} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => [A], <<"extra_fields">> => ExtraFields}),
+                                {ok,Vs0} = do_query_history_by_stable(NArgs#{<<"addrFirst">> => AddrFirst, <<"addrs">> => [A]}),
                                 Acc ++ Vs0
                         end, [], Addrs)
                  end,
