@@ -36,10 +36,11 @@ thing_field_precision_type(#{<<"type">> := Type} = Thing) when Type =:= <<"int">
         {
             maps:get(<<"precision">>, Thing, 0),
             maps:get(<<"offset">>, Thing, 0),
+            maps:get(<<"rate">>, Thing, 1),
             maps:get(<<"formula">>, Thing, undefined)
         },
     case Check of
-        {0, 0, undefined} ->
+        {0, 0, 1, undefined} ->
             Type;
         _ ->
             <<"float">>
