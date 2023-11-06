@@ -40,7 +40,7 @@ thing_field_precision_type(#{<<"type">> := Type} = Thing) when Type =:= <<"int">
             maps:get(<<"formula">>, Thing, undefined)
         },
     case Check of
-        {0, 0, 1, undefined} ->
+        {0, 0, Rate, undefined} when is_integer(Rate)->
             Type;
         _ ->
             <<"float">>
