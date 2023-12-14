@@ -988,7 +988,7 @@ to_fields_bin(_, Fields, TimeAs, _Function) ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ", avg(", F/binary, ") as ", Alias/binary>>;
            (#{<<"name">> := F,
-            <<"type">> := Type} = FInfo, Acc) when Type =:= <<"string">> ->
+            <<"type">> := Type} = FInfo, Acc) when Type =:= <<"string">> orelse Type =:= <<"array">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ", last(", F/binary, ") as ", Alias/binary>>
         end, <<"TIMEDIFF(_wstart, 0, 1s) as ", TimeAs/binary>>, Fields1).
