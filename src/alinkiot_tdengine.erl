@@ -249,13 +249,14 @@ query_history(_OperationID, RArgs, _Context, Req) ->
     case do_query_history(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
-            Res = maps:merge(#{total => Count, rows => Rows}, CommonSuccessRes),
+            Res = maps:merge(#{total => Count, rows => return_format_time(RArgs, Rows)}, CommonSuccessRes),
             alinkdata_common_service:response(Res, Req);
         {ok, Rows} ->
-            alinkdata_common_service:response(alinkdata_ajax_result:success_result(Rows), Req);
+            alinkdata_common_service:response(alinkdata_ajax_result:success_result(return_format_time(RArgs, Rows)), Req);
         {error, Reason} ->
             Msg = list_to_binary(io_lib:format("~p", [Reason])),
-            alinkdata_common_service:response(alinkdata_ajax_result:error_result(Msg), Req)
+            logger:error(Msg),
+            alinkdata_common_service:response(alinkdata_ajax_result:error_result(), Req)
     end.
 
 export_history(_OperationID, _Args, _Context, Req) ->
@@ -295,7 +296,7 @@ export_history(_OperationID, _Args, _Context, Req) ->
     end.
 
 
-get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"true">>}, _Context, Req) ->
+get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"true">>} = RArgs, _Context, Req) ->
     Addrs =
         lists:filter(
             fun(A) -> A =/= <<>>
@@ -306,9 +307,9 @@ get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"tr
                 Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
                 (do_get_device_last_row(Args))#{<<"addr">> => Addr}
         end, Addrs),
-    Res = alinkdata_ajax_result:success_result(AddrRows),
+    Res = alinkdata_ajax_result:success_result(return_format_time(RArgs, AddrRows)),
     alinkdata_common_service:response(Res, Req);
-get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
+get_device_last_row(_OperationID, #{<<"addr">> := Addr} = RArgs, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
     ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
     Res =
@@ -316,7 +317,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr}, _Context, Req) ->
             {ok, []} ->
                 alinkdata_ajax_result:success_result(#{});
             {ok, [Row|_]} ->
-                alinkdata_ajax_result:success_result(Row);
+                alinkdata_ajax_result:success_result(return_format_time_row(RArgs, Row));
             {error, Reason} ->
                 logger:error("query device ~p last row failed", [Addr, Reason]),
                 alinkdata_ajax_result:success_result(#{})
@@ -994,6 +995,26 @@ to_fields_bin(_, Fields, TimeAs, _Function) ->
             <<Acc/binary, ", last(", F/binary, ") as ", Alias/binary>>
         end, <<"TIMEDIFF(_wstart, 0, 1s) as ", TimeAs/binary>>, Fields1).
 
+
+return_format_time(#{<<"timeFormat">> := <<"datetime">>}, Rows) ->
+    lists:map(
+        fun(#{<<"createtime">> := Time} = Row) ->
+            Row#{<<"createtime">> => timestamp2localtime_str(Time)};
+            (#{<<"time">> := Time} = Row) ->
+                Row#{<<"time">> => timestamp2localtime_str(Time)};
+            (Row) ->
+                Row
+    end, Rows);
+return_format_time(_, Rows) ->
+    Rows.
+
+
+return_format_time_row(#{<<"timeFormat">> := <<"datetime">>}, #{<<"createtime">> := Time} = Row) ->
+    Row#{<<"createtime">> => timestamp2localtime_str(Time)};
+return_format_time_row(#{<<"timeFormat">> := <<"datetime">>}, #{<<"time">> := Time} = Row) ->
+    Row#{<<"time">> => timestamp2localtime_str(Time)};
+return_format_time_row(_, Row) ->
+    Row.
 
 
 timestamp2localtime_str(TimeStamp) ->
