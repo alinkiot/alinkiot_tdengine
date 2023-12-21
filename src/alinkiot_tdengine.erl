@@ -34,7 +34,8 @@
     delete_user/1,
     query_object/2,
     batch/1,
-    request/1
+    request/1,
+    do_query_history/1
 ]).
 
 -define(DEFAULT_LIMIT, 30000).
