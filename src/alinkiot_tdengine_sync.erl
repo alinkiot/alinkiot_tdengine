@@ -68,7 +68,7 @@ all_device_table_add_tag(Name, Type) ->
         {ok, _, ExistsSTables} ->
             ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
             ExistsSTablesList =
-                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;(<<"scene_data_", _/binary>>) -> false;
                     (_) -> true end, ExistsSTablesList0),
             lists:foreach(
                 fun(STable) ->
@@ -104,7 +104,7 @@ all_device_table_delete_tag(Name) ->
         {ok, _, ExistsSTables} ->
             ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
             ExistsSTablesList =
-                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;(<<"scene_data_", _/binary>>) -> false;
                     (_) -> true end, ExistsSTablesList0),
             lists:foreach(
                 fun(STable) ->
@@ -140,7 +140,7 @@ all_device_table_add_column(Name, Type) ->
         {ok, _, ExistsSTables} ->
             ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
             ExistsSTablesList =
-                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;(<<"scene_data_", _/binary>>) -> false;
                     (_) -> true end, ExistsSTablesList0),
             lists:foreach(
                 fun(STable) ->
@@ -176,7 +176,7 @@ all_device_table_delete_column(Name) ->
         {ok, _, ExistsSTables} ->
             ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
             ExistsSTablesList =
-                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;(<<"scene_data_", _/binary>>) -> false;
                     (_) -> true end, ExistsSTablesList0),
             lists:foreach(
                 fun(STable) ->
@@ -215,7 +215,7 @@ check_add(ProductId, RThingInfo) ->
         {ok, _, ExistsSTables} ->
             ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
             ExistsSTablesList =
-                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;(<<"scene_data_", _/binary>>) -> false;
                     (_) -> true end, ExistsSTablesList0),
             case lists:member(STable, ExistsSTablesList) of
                 true ->
@@ -269,7 +269,7 @@ get_stable_schema(STable) ->
         {ok, _, ExistsSTables} ->
             ExistsSTablesList0 = lists:map(fun(#{<<"stable_name">> := T}) ->  T end, ExistsSTables),
             ExistsSTablesList =
-                lists:filter(fun(<<"metrics_", _/binary>>) -> false;
+                lists:filter(fun(<<"metrics_", _/binary>>) -> false;(<<"scene_data_", _/binary>>) -> false;
                     (_) -> true end, ExistsSTablesList0),
             case lists:member(STable, ExistsSTablesList) of
                 true ->
