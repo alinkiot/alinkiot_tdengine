@@ -915,7 +915,6 @@ request(Sql) ->
         {ok, Row, Result} ->
             {ok, Row, format_result(Result)};
         {error, Reason} ->
-            logger:error("Execute Fail ~p ~p ~p ~p", [Host, Port, Sql, Reason]),
             {error, Reason}
     end.
 
