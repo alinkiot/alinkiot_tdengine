@@ -237,15 +237,8 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
 
 %% 查询，
 query_history(_OperationID, RArgs, _Context, Req) ->
-
-    Args =
-        case maps:get(<<"step">>, RArgs, undefined) of
-            undefined ->
-                ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
-                RArgs#{<<"extra_fields">> => ExtraFields};
-            _ ->
-                RArgs
-        end,
+    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
+    Args = RArgs#{<<"extra_fields">> => ExtraFields},
     case do_query_history(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
@@ -987,7 +980,7 @@ to_fields_bin(_, Fields, TimeAs, _Function) ->
                                                 orelse Type =:= <<"integer">>
                                                 orelse Type =:= <<"float">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
-            <<Acc/binary, ", avg(", F/binary, ") as ", Alias/binary>>;
+            <<Acc/binary, ", FIRST(", F/binary, ") as ", Alias/binary>>;
            (#{<<"name">> := F,
             <<"type">> := Type} = FInfo, Acc) when Type =:= <<"string">> orelse Type =:= <<"array">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
