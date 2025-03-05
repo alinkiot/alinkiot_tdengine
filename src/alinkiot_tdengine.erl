@@ -238,7 +238,13 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
 %% 查询，
 query_history(_OperationID, RArgs, _Context, Req) ->
     ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>, <<"type">> => <<"string">>}],
-    Args = RArgs#{<<"extra_fields">> => ExtraFields, <<"function">> => <<"first">>},
+    Args =
+        case maps:get(<<"step">>, RArgs, undefined) of
+            undefined ->
+                RArgs#{<<"extra_fields">> => ExtraFields};
+            _ ->
+                RArgs#{<<"extra_fields">> => ExtraFields, <<"function">> => <<"first">>}
+        end,
     case do_query_history(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
