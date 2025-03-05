@@ -237,8 +237,8 @@ query_device_log(_OperationID, RArgs, _Context, Req) ->
 
 %% 查询，
 query_history(_OperationID, RArgs, _Context, Req) ->
-    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
-    Args = RArgs#{<<"extra_fields">> => ExtraFields},
+    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>, <<"type">> => <<"string">>}],
+    Args = RArgs#{<<"extra_fields">> => ExtraFields, <<"function">> => <<"first">>},
     case do_query_history(Args) of
         {ok, Count, Rows} ->
             CommonSuccessRes = alinkdata_ajax_result:success_result(),
@@ -304,7 +304,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := AddrsBin, <<"batch">> := <<"tr
     alinkdata_common_service:response(Res, Req);
 get_device_last_row(_OperationID, #{<<"addr">> := Addr} = RArgs, _Context, Req) ->
     Args = #{<<"addr">> => Addr, <<"function">> => <<"last_row">>},
-    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
+    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>, <<"type">> => <<"string">>}],
     Res =
         case do_query_history(Args#{<<"extra_fields">> => ExtraFields}) of
             {ok, []} ->
@@ -318,7 +318,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr} = RArgs, _Context, Req) 
     alinkdata_common_service:response(Res, Req).
 
 do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
-    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>}],
+    ExtraFields = [#{<<"name">> => <<"alarm_rule">>, <<"as">> => <<"alarmrule">>, <<"type">> => <<"string">>}],
     case do_query_history(Args#{<<"extra_fields">> => ExtraFields}) of
         {ok, []} ->
             #{};
@@ -972,7 +972,7 @@ to_fields_bin(<<>>, Fields, TimeAs, Function) ->
             Alias = maps:get(<<"as">>, FInfo, F),
             <<Acc/binary, ",", Function/binary, "(" ,F/binary, ") as ", Alias/binary>>
         end, TimeB, Fields1);
-to_fields_bin(_, Fields, TimeAs, _Function) ->
+to_fields_bin(_, Fields, TimeAs, Function) ->
     Fields1 = lists:filter(fun(#{<<"name">> := F}) -> F =/= <<"time">> end, Fields),
     lists:foldl(
         fun(#{<<"name">> := F,
@@ -980,7 +980,7 @@ to_fields_bin(_, Fields, TimeAs, _Function) ->
                                                 orelse Type =:= <<"integer">>
                                                 orelse Type =:= <<"float">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
-            <<Acc/binary, ", FIRST(", F/binary, ") as ", Alias/binary>>;
+            <<Acc/binary, ", ", Function/binary ,"(", F/binary, ") as ", Alias/binary>>;
            (#{<<"name">> := F,
             <<"type">> := Type} = FInfo, Acc) when Type =:= <<"string">> orelse Type =:= <<"array">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
