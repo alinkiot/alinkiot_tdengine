@@ -318,7 +318,7 @@ get_device_last_row(_OperationID, #{<<"addr">> := Addr} = RArgs, _Context, Req) 
             {ok, [Row|_]} ->
                 alinkdata_ajax_result:success_result(return_format_time_row(RArgs, Row));
             {error, Reason} ->
-                logger:error("query device ~p last row failed", [Addr, Reason]),
+                logger:error("query device ~p last row failed,~p", [Addr, Reason]),
                 alinkdata_ajax_result:success_result(#{})
         end,
     alinkdata_common_service:response(Res, Req).
@@ -331,7 +331,7 @@ do_get_device_last_row( #{<<"addr">> := Addr} = Args) ->
         {ok, [Row|_]} ->
             Row;
         {error, Reason} ->
-            logger:error("query device ~p last row failed", [Addr, Reason]),
+            logger:error("query device ~p last row failed,~p", [Addr, Reason]),
             #{}
     end.
 
@@ -990,7 +990,7 @@ to_fields_bin(_, Fields, TimeAs, Function) ->
            (#{<<"name">> := F,
             <<"type">> := Type} = FInfo, Acc) when Type =:= <<"string">> orelse Type =:= <<"array">> ->
             Alias = maps:get(<<"as">>, FInfo, F),
-            <<Acc/binary, ", last(", F/binary, ") as ", Alias/binary>>
+            <<Acc/binary, ", ", Function/binary, "(", F/binary, ") as ", Alias/binary>>
         end, <<"TIMEDIFF(_wstart, 0, 1s) as ", TimeAs/binary>>, Fields1).
 
 

@@ -17,3 +17,4 @@ _build/
 _checkouts/
 */.DS_Store
 *.iml
+.DS_Store
