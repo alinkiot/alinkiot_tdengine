@@ -252,9 +252,13 @@ query_history(_OperationID, RArgs, _Context, Req) ->
             alinkdata_common_service:response(Res, Req);
         {ok, Rows} ->
             alinkdata_common_service:response(alinkdata_ajax_result:success_result(return_format_time(RArgs, Rows)), Req);
+        {error, #{<<"code">> := 9731, <<"desc">> := Msg}} ->
+            CommonSuccessRes = alinkdata_ajax_result:success_result(),
+            Res = maps:merge(#{total => 0, rows => [], msg => Msg}, CommonSuccessRes),
+            alinkdata_common_service:response(Res, Req);
         {error, Reason} ->
             Msg = list_to_binary(io_lib:format("~p", [Reason])),
-            logger:error(Msg),
+            logger:error("do_query_history ~p", [Msg]),
             alinkdata_common_service:response(alinkdata_ajax_result:error_result(), Req)
     end.
 
